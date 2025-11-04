@@ -2,11 +2,12 @@
 import { GoogleGenAI, Type, Modality } from '@google/genai';
 import { ChatMessage, Expense, MealPlan, UserProfile, Income, Recipe, GroceryLink } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+if (!apiKey) {
+    throw new Error("API_KEY or GEMINI_API_KEY environment variable not set. Please create a .env file with your Gemini API key.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: apiKey });
 const model = ai.models;
 
 export const generateGroceryPlan = async (
@@ -106,7 +107,7 @@ export const generateVideoPlan = async (
     const prompt = `Create a visually appealing 8-second video summarizing a 7-day grocery and meal plan for ${people} people with a budget of ₹${budget} in Indian Rupees (INR). Dietary preferences: ${preferences}. The video should contain clear, easy-to-read text overlay summarizing the plan.`;
     
     // Create a new instance before API call to ensure fresh API key.
-    const videoAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const videoAi = new GoogleGenAI({ apiKey: apiKey });
 
     try {
         onProgress('Sending request to generate video...');
@@ -135,7 +136,7 @@ export const generateVideoPlan = async (
             throw new Error('Video generation succeeded but no download link was found.');
         }
 
-        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const response = await fetch(`${downloadLink}&key=${apiKey}`);
         if (!response.ok) {
             throw new Error(`Failed to download video: ${response.statusText}`);
         }
@@ -245,7 +246,7 @@ export const generateRecipeImage = async (recipeName: string, recipeDescription:
 
 export const generateRecipeVideo = async (recipeName: string, onProgress: (message: string) => void): Promise<string> => {
     const prompt = `Create a short, dynamic 8-second video tutorial showing the key steps of making "${recipeName}". Include quick cuts of ingredients being prepped and the final dish.`;
-    const videoAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const videoAi = new GoogleGenAI({ apiKey: apiKey });
     try {
         onProgress('Sending request for recipe video...');
         let operation = await videoAi.models.generateVideos({
@@ -262,7 +263,7 @@ export const generateRecipeVideo = async (recipeName: string, onProgress: (messa
         onProgress('Fetching your recipe video...');
         const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
         if (!downloadLink) throw new Error('Video generation failed to return a download link.');
-        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const response = await fetch(`${downloadLink}&key=${apiKey}`);
         if (!response.ok) throw new Error(`Failed to download video: ${response.statusText}`);
         return URL.createObjectURL(await response.blob());
     } catch (error) {
