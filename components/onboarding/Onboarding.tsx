@@ -42,7 +42,7 @@ const Onboarding: React.FC = () => {
       case 1:
         return (
           <div>
-            <h2 className="text-2xl font-medium text-on-surface mb-2">Welcome to AI Budget Buddy!</h2>
+            <h2 className="text-2xl font-medium text-on-surface mb-2">Welcome to FinAI!</h2>
             <p className="text-on-surface-variant mb-6">Let's get to know you a little.</p>
             <div className="space-y-4">
               <div>

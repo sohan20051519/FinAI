@@ -7,6 +7,8 @@ interface AppState {
   fixedExpenses: FixedExpense[];
   userProfile: UserProfile | null;
   isOnboardingComplete: boolean;
+  isAuthenticated: boolean;
+  authUser: { name: string; email: string } | null;
 }
 
 type Action =
@@ -14,14 +16,19 @@ type Action =
   | { type: 'DELETE_EXPENSE'; payload: string }
   | { type: 'ADD_INCOME'; payload: Income }
   | { type: 'DELETE_INCOME'; payload: string }
-  | { type: 'INITIALIZE_APP'; payload: { userProfile: UserProfile; monthlyIncome: number; fixedExpenses: FixedExpense[] } };
+  | { type: 'INITIALIZE_APP'; payload: { userProfile: UserProfile; monthlyIncome: number; fixedExpenses: FixedExpense[] } }
+  | { type: 'SIGN_IN'; payload: { name: string; email: string } }
+  | { type: 'SIGN_UP'; payload: { name: string; email: string } }
+  | { type: 'SIGN_OUT' };
 
 const initialState: AppState = {
   expenses: [],
   incomes: [],
   fixedExpenses: [],
   userProfile: null,
-  isOnboardingComplete: false, // App starts with onboarding
+  isOnboardingComplete: false,
+  isAuthenticated: false,
+  authUser: null,
 };
 
 const AppStateContext = createContext<AppState>(initialState);
@@ -80,6 +87,29 @@ const appReducer = (state: AppState, action: Action): AppState => {
         isOnboardingComplete: true,
       };
     }
+    case 'SIGN_IN':
+      return {
+        ...state,
+        isAuthenticated: true,
+        authUser: action.payload,
+      };
+    case 'SIGN_UP':
+      return {
+        ...state,
+        isAuthenticated: true,
+        authUser: action.payload,
+      };
+    case 'SIGN_OUT':
+      return {
+        ...state,
+        isAuthenticated: false,
+        authUser: null,
+        isOnboardingComplete: false,
+        userProfile: null,
+        expenses: [],
+        incomes: [],
+        fixedExpenses: [],
+      };
     default:
       return state;
   }
