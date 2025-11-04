@@ -10,15 +10,48 @@ if (!apiKey) {
 const ai = new GoogleGenAI({ apiKey: apiKey });
 const model = ai.models;
 
+const getRegionalContext = (region: string): string => {
+  const regionalContexts: Record<string, string> = {
+    north: `North Indian cuisine: Focus on roti, paratha, dal, sabzi, biryani, tandoori items. Common ingredients: wheat flour, basmati rice, paneer, lentils (dal), ghee, yogurt, spices like garam masala, cumin, coriander. Regional dishes: rajma, chole, butter chicken, paneer tikka, aloo gobi, kadhi, kheer. Breakfast typically includes paratha, puri, halwa, chole bhature.`,
+    south: `South Indian cuisine: Focus on rice, dosa, idli, sambar, rasam, coconut-based curries. Common ingredients: rice, urad dal, toor dal, coconut, curry leaves, tamarind, mustard seeds, fenugreek. Regional dishes: dosa, idli, vada, sambar, rasam, coconut chutney, biryani, fish curry, avial, payasam. Breakfast typically includes idli, dosa, upma, pongal.`,
+    east: `East Indian cuisine: Focus on rice, fish, mustard oil, sweets, fermented foods. Common ingredients: rice, fish, mustard oil, mustard seeds, poppy seeds, coconut, jaggery, milk. Regional dishes: macher jhol (fish curry), roshogolla, mishti doi, sandesh, luchi, cholar dal, shukto, doi maach. Breakfast typically includes luchi, aloo dum, poha, chire.`,
+    west: `West Indian cuisine: Focus on diverse regional dishes from Maharashtra, Gujarat, Rajasthan. Common ingredients: wheat, jowar, bajra, peanuts, coconut, kokum, jaggery, various lentils. Regional dishes: pav bhaji, vada pav, dhokla, thepla, dal baati, kadhi, thalipeeth, puran poli, modak. Breakfast typically includes poha, upma, paratha, dhokla, thepla.`,
+    northeast: `Northeast Indian cuisine: Focus on rice, bamboo shoots, fermented foods, meat, minimal oil. Common ingredients: rice, bamboo shoots, fermented soybeans, fish, pork, duck, green chilies, local herbs, mustard oil. Regional dishes: momos, thukpa, fish curry, pork curry, bamboo shoot pickle, axone, khar, tenga. Breakfast typically includes rice, tea, local snacks.`,
+    central: `Central Indian cuisine: Focus on wheat, rice, dal, vegetables, spicy curries. Common ingredients: wheat flour, rice, lentils, vegetables, ghee, spices, besan. Regional dishes: dal bafla, poha, jalebi, kachori, bhutte ki kees, sabudana khichdi, malpua. Breakfast typically includes poha, kachori, jalebi, paratha.`,
+    other: `General Indian cuisine: Include a mix of popular Indian dishes from various regions. Focus on common ingredients available across India.`,
+  };
+  return regionalContexts[region] || regionalContexts.other;
+};
+
 export const generateGroceryPlan = async (
   budget: number,
   people: number,
-  preferences: string
+  preferences: string,
+  region: string
 ): Promise<MealPlan> => {
+  const regionalContext = getRegionalContext(region);
+  
   const prompt = `Create a 7-day meal plan and a corresponding grocery list for ${people} people with a budget of ₹${budget} in Indian Rupees (INR). 
-  Dietary preferences: ${preferences}. Consider Indian cuisine where appropriate.
-  The meal plan should include breakfast, lunch, and dinner for each day.
-  The grocery list should be categorized (e.g., Produce, Dairy, Meat, Pantry).
+  
+  Regional Context: ${regionalContext}
+  
+  Dietary preferences: ${preferences}. 
+  
+  IMPORTANT REGIONAL CUSTOMIZATION:
+  - Use ingredients commonly available and affordable in the selected region
+  - Include traditional dishes and cooking methods from that region
+  - Consider regional price variations for ingredients
+  - Use regional spice blends and flavor profiles
+  - Match regional meal patterns (breakfast, lunch, dinner styles)
+  - Include regional snacks and accompaniments
+  
+  The meal plan should include breakfast, lunch, and dinner for each day, reflecting the regional cuisine style.
+  The grocery list should be categorized (e.g., Produce, Dairy, Meat, Spices, Grains, Pantry) and include ingredients that are:
+  1. Commonly available in local markets of the selected region
+  2. Priced appropriately for the regional market
+  3. Used in traditional regional cooking
+  4. Seasonal and fresh in that region
+  
   Provide the response in a structured JSON format.`;
 
   try {
@@ -72,9 +105,16 @@ export const generateGroceryPlan = async (
 export const generateImagePlan = async (
   budget: number,
   people: number,
-  preferences: string
+  preferences: string,
+  region: string
 ): Promise<string> => {
-    const prompt = `Create a visually appealing single image that summarizes a 7-day grocery and meal plan for ${people} people with a budget of ₹${budget} in Indian Rupees (INR). Dietary preferences: ${preferences}. The image should be structured like an infographic with clear, readable text.`;
+    const regionalContext = getRegionalContext(region);
+    const prompt = `Create a visually appealing single image that summarizes a 7-day grocery and meal plan for ${people} people with a budget of ₹${budget} in Indian Rupees (INR). 
+    
+    Regional Context: ${regionalContext}
+    Dietary preferences: ${preferences}. 
+    
+    The image should reflect the regional cuisine style and include visual elements that represent the selected region's food culture. The image should be structured like an infographic with clear, readable text showing regional dishes and ingredients.`;
 
     try {
         const response = await ai.models.generateContent({
@@ -102,9 +142,16 @@ export const generateVideoPlan = async (
   budget: number,
   people: number,
   preferences: string,
+  region: string,
   onProgress: (message: string) => void
 ): Promise<string> => {
-    const prompt = `Create a visually appealing 8-second video summarizing a 7-day grocery and meal plan for ${people} people with a budget of ₹${budget} in Indian Rupees (INR). Dietary preferences: ${preferences}. The video should contain clear, easy-to-read text overlay summarizing the plan.`;
+    const regionalContext = getRegionalContext(region);
+    const prompt = `Create a visually appealing 8-second video summarizing a 7-day grocery and meal plan for ${people} people with a budget of ₹${budget} in Indian Rupees (INR). 
+    
+    Regional Context: ${regionalContext}
+    Dietary preferences: ${preferences}. 
+    
+    The video should reflect the regional cuisine style with visual elements representing the selected region's food culture. The video should contain clear, easy-to-read text overlay summarizing the plan, highlighting regional dishes and ingredients.`;
     
     // Create a new instance before API call to ensure fresh API key.
     const videoAi = new GoogleGenAI({ apiKey: apiKey });
@@ -155,7 +202,7 @@ export const getAssistantResponse = async (history: ChatMessage[], expenses: Exp
     ? `The user's name is ${userProfile.name}, they are ${userProfile.age} years old, and they have a household of ${userProfile.familyMembers}.` 
     : '';
 
-  const systemInstruction = `You are a helpful financial assistant for a user in India. ${userContext} Your role is to analyze the user's expense and income data (in Indian Rupees, ₹) and answer their questions about their budget and spending habits.
+  const systemInstruction = `You are FinAI, a helpful financial assistant for a user in India. ${userContext} Your role is to analyze the user's expense and income data (in Indian Rupees, ₹) and answer their questions about their budget and spending habits.
   Some transactions may have a "recurring": "monthly" property, which means they occur every month. You should factor this into your analysis of their monthly budget.
   Here is the user's recent expense data:
   ${expenseData}
@@ -163,13 +210,23 @@ export const getAssistantResponse = async (history: ChatMessage[], expenses: Exp
   Here is the user's recent income data:
   ${incomeData}
 
-  Keep your answers concise, friendly, and actionable. Address the user by their name if you know it. Analyze both income and expenses to provide holistic advice.`;
+  Keep your answers concise, friendly, and actionable. Address the user by their name if you know it. Analyze both income and expenses to provide holistic advice. Use emojis sparingly to make responses more engaging.`;
+
+  // Convert history to the format expected by Gemini API
+  // Skip the first message if it's the greeting (to avoid duplicate context)
+  const conversationHistory = history
+    .filter((msg, index) => index > 0 || msg.role !== 'model') // Skip initial greeting
+    .map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }]
+    }));
 
   const chat = ai.chats.create({
     model: 'gemini-flash-latest',
     config: {
         systemInstruction: systemInstruction,
-    }
+    },
+    history: conversationHistory.length > 0 ? conversationHistory : undefined
   });
 
   try {

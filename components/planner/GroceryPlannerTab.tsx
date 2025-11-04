@@ -6,6 +6,8 @@ import { generateGroceryPlan, generateImagePlan, generateVideoPlan } from '../..
 // FIX: Import Meal type to be used explicitly.
 import { MealPlan, GroceryItem, Meal } from '../../types';
 import { useAppState } from '../../context/AppContext';
+import { downloadPlanAsPDF, downloadImage, downloadVideo } from '../../utils/downloadUtils';
+import { ArrowDownTrayIcon } from '../icons/Icons';
 
 interface GroceryPlannerTabProps {
     onGroceryListGenerated: (list: GroceryItem[]) => void;
@@ -16,15 +18,25 @@ const PlannerForm: React.FC<{
   loading: 'text' | 'image' | 'video' | null;
   isApiKeySelectedForVideo: boolean;
   onSelectApiKey: () => void;
-  formState: { budget: string; people: string; preferences: string; };
-  setFormState: React.Dispatch<React.SetStateAction<{ budget: string; people: string; preferences: string; }>>;
+  formState: { budget: string; people: string; preferences: string; region: string; };
+  setFormState: React.Dispatch<React.SetStateAction<{ budget: string; people: string; preferences: string; region: string; }>>;
 }> = ({ onGenerate, loading, isApiKeySelectedForVideo, onSelectApiKey, formState, setFormState }) => {
-  const { budget, people, preferences } = formState;
+  const { budget, people, preferences, region } = formState;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
     setFormState(prev => ({ ...prev, [id]: value }));
   };
+
+  const indianRegions = [
+    { value: 'north', label: 'North India (Punjab, Delhi, Haryana, UP, etc.)' },
+    { value: 'south', label: 'South India (Tamil Nadu, Karnataka, Kerala, Andhra Pradesh, etc.)' },
+    { value: 'east', label: 'East India (West Bengal, Odisha, Bihar, Jharkhand, etc.)' },
+    { value: 'west', label: 'West India (Maharashtra, Gujarat, Rajasthan, etc.)' },
+    { value: 'northeast', label: 'Northeast India (Assam, Manipur, Meghalaya, etc.)' },
+    { value: 'central', label: 'Central India (Madhya Pradesh, Chhattisgarh, etc.)' },
+    { value: 'other', label: 'Other/General Indian' },
+  ];
   
   return (
     <Card>
@@ -38,6 +50,22 @@ const PlannerForm: React.FC<{
             <label htmlFor="people" className="block text-sm font-medium text-on-surface-variant mb-1">Number of People</label>
             <input id="people" type="number" value={people} onChange={handleInputChange} className="w-full bg-surface-variant/50 p-3 rounded-lg border border-outline/30 focus:border-primary focus:ring-primary text-on-surface placeholder:text-on-surface-variant" required />
           </div>
+        </div>
+        <div>
+          <label htmlFor="region" className="block text-sm font-medium text-on-surface-variant mb-1">Region/State</label>
+          <select 
+            id="region" 
+            value={region} 
+            onChange={handleInputChange} 
+            className="w-full bg-surface-variant/50 p-3 rounded-lg border border-outline/30 focus:border-primary focus:ring-primary text-on-surface"
+            required
+          >
+            <option value="">Select your region...</option>
+            {indianRegions.map(reg => (
+              <option key={reg.value} value={reg.value}>{reg.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-on-surface-variant mt-1">This helps customize ingredients and cuisine based on your region</p>
         </div>
         <div>
           <label htmlFor="preferences" className="block text-sm font-medium text-on-surface-variant mb-1">Dietary Preferences (e.g., vegetarian, low-carb)</label>
@@ -66,7 +94,13 @@ const PlannerForm: React.FC<{
   );
 };
 
-const PlanDisplay: React.FC<{ plan: MealPlan }> = ({ plan }) => {
+const PlanDisplay: React.FC<{ 
+    plan: MealPlan; 
+    budget: number; 
+    people: number; 
+    region: string; 
+    preferences: string;
+}> = ({ plan, budget, people, region, preferences }) => {
     // FIX: Explicitly type the initial value of the reduce function to prevent TypeScript
     // from inferring `groupedList` as `unknown`, which causes a downstream error on `items.map`.
     const groupedList = (plan.groceryList || []).reduce((acc: Record<string, GroceryItem[]>, item) => {
@@ -78,37 +112,54 @@ const PlanDisplay: React.FC<{ plan: MealPlan }> = ({ plan }) => {
         return acc;
     }, {} as Record<string, GroceryItem[]>);
 
+    const handleDownloadPDF = () => {
+        downloadPlanAsPDF(plan, budget, people, region, preferences);
+    };
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-            <Card>
-                <h2 className="text-2xl font-medium text-on-surface-variant mb-4">Meal Plan</h2>
-                <div className="space-y-4">
-                    {/* FIX: Explicitly type `day` as `Meal` to resolve potential type inference issues from API responses. */}
-                    {Array.isArray(plan.mealPlan) && plan.mealPlan.map((day: Meal) => (
-                        <div key={day.day}>
-                            <h3 className="font-bold text-lg text-on-surface">{day.day}</h3>
-                            <ul className="text-sm text-on-surface-variant list-disc pl-5">
-                                <li><strong>Breakfast:</strong> {day.breakfast}</li>
-                                <li><strong>Lunch:</strong> {day.lunch}</li>
-                                <li><strong>Dinner:</strong> {day.dinner}</li>
-                            </ul>
-                        </div>
-                    ))}
-                </div>
-            </Card>
-            <Card>
-                <h2 className="text-2xl font-medium text-on-surface-variant mb-4">Grocery List</h2>
-                <div className="space-y-4">
-                    {Object.entries(groupedList).map(([category, items]) => (
-                        <div key={category}>
-                            <h3 className="font-bold text-lg text-on-surface">{category}</h3>
-                            <ul className="text-sm text-on-surface-variant list-disc pl-5">
-                                {items.map(item => <li key={item.item}>{item.item} ({item.quantity})</li>)}
-                            </ul>
-                        </div>
-                    ))}
-                </div>
-            </Card>
+        <div className="mt-8">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-medium text-on-surface-variant">Meal Plan & Grocery List</h2>
+                <Button
+                    type="button"
+                    onClick={handleDownloadPDF}
+                    className="flex items-center gap-2"
+                >
+                    <ArrowDownTrayIcon className="h-5 w-5" />
+                    Download PDF
+                </Button>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card>
+                    <h2 className="text-2xl font-medium text-on-surface-variant mb-4">Meal Plan</h2>
+                    <div className="space-y-4">
+                        {/* FIX: Explicitly type `day` as `Meal` to resolve potential type inference issues from API responses. */}
+                        {Array.isArray(plan.mealPlan) && plan.mealPlan.map((day: Meal) => (
+                            <div key={day.day}>
+                                <h3 className="font-bold text-lg text-on-surface">{day.day}</h3>
+                                <ul className="text-sm text-on-surface-variant list-disc pl-5">
+                                    <li><strong>Breakfast:</strong> {day.breakfast}</li>
+                                    <li><strong>Lunch:</strong> {day.lunch}</li>
+                                    <li><strong>Dinner:</strong> {day.dinner}</li>
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+                <Card>
+                    <h2 className="text-2xl font-medium text-on-surface-variant mb-4">Grocery List</h2>
+                    <div className="space-y-4">
+                        {Object.entries(groupedList).map(([category, items]) => (
+                            <div key={category}>
+                                <h3 className="font-bold text-lg text-on-surface">{category}</h3>
+                                <ul className="text-sm text-on-surface-variant list-disc pl-5">
+                                    {items.map(item => <li key={item.item}>{item.item} ({item.quantity})</li>)}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            </div>
         </div>
     )
 }
@@ -128,6 +179,7 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
     budget: '5000',
     people: userProfile?.familyMembers?.toString() || '2',
     preferences: 'No specific preferences',
+    region: '',
   });
 
   useEffect(() => {
@@ -159,20 +211,20 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
         return;
     }
     
-    const { budget, people, preferences } = formState;
+    const { budget, people, preferences, region } = formState;
 
     try {
       if (type === 'text') {
-        const result = await generateGroceryPlan(parseInt(budget), parseInt(people), preferences);
+        const result = await generateGroceryPlan(parseInt(budget), parseInt(people), preferences, region);
         setPlan(result);
         if (result.groceryList) {
             onGroceryListGenerated(result.groceryList);
         }
       } else if (type === 'image') {
-        const result = await generateImagePlan(parseInt(budget), parseInt(people), preferences);
+        const result = await generateImagePlan(parseInt(budget), parseInt(people), preferences, region);
         setImageUrl(result);
       } else if (type === 'video') {
-        const result = await generateVideoPlan(parseInt(budget), parseInt(people), preferences, setVideoPollMessage);
+        const result = await generateVideoPlan(parseInt(budget), parseInt(people), preferences, region, setVideoPollMessage);
         setVideoUrl(result);
         setVideoPollMessage('');
       }
@@ -216,18 +268,46 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
       )}
       {error && <p className="mt-8 text-center text-error font-medium bg-error-container p-4 rounded-xl">{error}</p>}
       
-      {plan && !loading && <PlanDisplay plan={plan} />}
+      {plan && !loading && (
+        <PlanDisplay 
+          plan={plan} 
+          budget={parseInt(formState.budget)} 
+          people={parseInt(formState.people)} 
+          region={formState.region} 
+          preferences={formState.preferences}
+        />
+      )}
       
       {imageUrl && !loading && (
           <Card className="mt-8">
-              <h2 className="text-2xl font-medium text-on-surface-variant mb-4">Image Plan</h2>
+              <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-medium text-on-surface-variant">Image Plan</h2>
+                  <Button
+                      type="button"
+                      onClick={() => downloadImage(imageUrl, 'meal-plan-image.png')}
+                      className="flex items-center gap-2"
+                  >
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                      Download Image
+                  </Button>
+              </div>
               <img src={imageUrl} alt="Generated grocery plan" className="rounded-2xl w-full" />
           </Card>
       )}
 
       {videoUrl && !loading && (
           <Card className="mt-8">
-              <h2 className="text-2xl font-medium text-on-surface-variant mb-4">Video Plan</h2>
+              <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-medium text-on-surface-variant">Video Plan</h2>
+                  <Button
+                      type="button"
+                      onClick={() => downloadVideo(videoUrl, 'meal-plan-video.mp4')}
+                      className="flex items-center gap-2"
+                  >
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                      Download Video
+                  </Button>
+              </div>
               <video src={videoUrl} controls className="rounded-2xl w-full"></video>
           </Card>
       )}
