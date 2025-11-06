@@ -22,6 +22,10 @@ const Planner: React.FC = () => {
     // setActiveTab('cart');
   };
 
+  const handleGroceryListChange = (list: GroceryItem[]) => {
+    setGroceryList(list);
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <Header title="AI Planner" subtitle="Create meal plans, discover recipes, and shop for groceries." />
@@ -51,7 +55,7 @@ const Planner: React.FC = () => {
         {activeTab === 'grocery' && <GroceryPlannerTab onGroceryListGenerated={handleGroceryListGenerated} />}
         {activeTab === 'recipe' && <RecipePlannerTab />}
         {/* FIX: Corrected typo from `active-tab` to `activeTab` */}
-        {activeTab === 'cart' && <GroceryCartTab groceryList={groceryList} />}
+        {activeTab === 'cart' && <GroceryCartTab groceryList={groceryList} onGroceryListChange={handleGroceryListChange} />}
       </div>
     </div>
   );

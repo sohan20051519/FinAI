@@ -6,6 +6,8 @@ import { EXPENSE_CATEGORIES } from '../../constants';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { TrashIcon } from '../icons/Icons';
+import { supabase } from '../../lib/supabase';
+import { expensesService, incomesService } from '../../services/supabaseService';
 
 const Header: React.FC<{ title: string }> = ({ title }) => (
     <header className="mb-8">
@@ -20,27 +22,52 @@ const ExpenseForm: React.FC = () => {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(parseFloat(amount))) return;
 
-    const newExpense: Expense = {
-      id: new Date().toISOString(),
-      amount: parseFloat(amount),
-      category,
-      description,
-      date,
-    };
-    if (isRecurring) {
-        newExpense.recurring = 'monthly';
-    }
+    setIsSaving(true);
+    setError(null);
 
-    dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
-    setAmount('');
-    setDescription('');
-    setCategory(EXPENSE_CATEGORIES[0]);
-    setIsRecurring(false);
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated. Please sign in again.');
+      }
+
+      const newExpense: Expense = {
+        id: new Date().toISOString(),
+        amount: parseFloat(amount),
+        category,
+        description,
+        date,
+      };
+      if (isRecurring) {
+        newExpense.recurring = 'monthly';
+      }
+
+      // Save to Supabase first
+      const savedExpense = await expensesService.addExpense(user.id, newExpense);
+
+      // Update local state with the saved expense (which has the database ID)
+      dispatch({ type: 'ADD_EXPENSE', payload: savedExpense });
+      
+      // Clear form
+      setAmount('');
+      setDescription('');
+      setCategory(EXPENSE_CATEGORIES[0]);
+      setIsRecurring(false);
+    } catch (err: any) {
+      console.error('Error saving expense:', err);
+      setError(err.message || 'Failed to save expense. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -93,7 +120,14 @@ const ExpenseForm: React.FC = () => {
             This is a recurring monthly expense
         </label>
       </div>
-      <Button type="submit">Add Expense</Button>
+      {error && (
+        <div className="bg-error-container border border-error rounded-lg p-2 sm:p-2.5">
+          <p className="text-[10px] sm:text-xs text-error">{error}</p>
+        </div>
+      )}
+      <Button type="submit" disabled={isSaving}>
+        {isSaving ? 'Saving...' : 'Add Expense'}
+      </Button>
     </form>
   );
 };
@@ -104,25 +138,50 @@ const IncomeForm: React.FC = () => {
     const [description, setDescription] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [isRecurring, setIsRecurring] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
   
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!amount || isNaN(parseFloat(amount))) return;
   
-      const newIncome: Income = {
-        id: new Date().toISOString(),
-        amount: parseFloat(amount),
-        description,
-        date,
-      };
-      if (isRecurring) {
-        newIncome.recurring = 'monthly';
-      }
+      setIsSaving(true);
+      setError(null);
 
-      dispatch({ type: 'ADD_INCOME', payload: newIncome });
-      setAmount('');
-      setDescription('');
-      setIsRecurring(false);
+      try {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          throw new Error('User not authenticated. Please sign in again.');
+        }
+
+        const newIncome: Income = {
+          id: new Date().toISOString(),
+          amount: parseFloat(amount),
+          description,
+          date,
+        };
+        if (isRecurring) {
+          newIncome.recurring = 'monthly';
+        }
+
+        // Save to Supabase first
+        const savedIncome = await incomesService.addIncome(user.id, newIncome);
+
+        // Update local state with the saved income (which has the database ID)
+        dispatch({ type: 'ADD_INCOME', payload: savedIncome });
+        
+        // Clear form
+        setAmount('');
+        setDescription('');
+        setIsRecurring(false);
+      } catch (err: any) {
+        console.error('Error saving income:', err);
+        setError(err.message || 'Failed to save income. Please try again.');
+      } finally {
+        setIsSaving(false);
+      }
     };
   
     return (
@@ -162,7 +221,14 @@ const IncomeForm: React.FC = () => {
                 This is a recurring monthly income
             </label>
         </div>
-        <Button type="submit">Add Income</Button>
+        {error && (
+          <div className="bg-error-container border border-error rounded-lg p-2 sm:p-2.5">
+            <p className="text-[10px] sm:text-xs text-error">{error}</p>
+          </div>
+        )}
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Add Income'}
+        </Button>
       </form>
     );
 };
@@ -172,14 +238,40 @@ const TransactionList: React.FC = () => {
     const dispatch = useAppDispatch();
     const [filterCategory, setFilterCategory] = useState('All');
     const [sortOrder, setSortOrder] = useState('date-desc');
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleDelete = (id: string, type: 'income' | 'expense', description: string) => {
-        if (window.confirm(`Are you sure you want to delete this ${type}: "${description}"?`)) {
+    const handleDelete = async (id: string, type: 'income' | 'expense', description: string) => {
+        if (!window.confirm(`Are you sure you want to delete this ${type}: "${description}"?`)) {
+            return;
+        }
+
+        setDeletingId(id);
+        setError(null);
+
+        try {
+            // Get current user
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            
+            if (userError || !user) {
+                throw new Error('User not authenticated. Please sign in again.');
+            }
+
+            // Delete from Supabase
             if (type === 'expense') {
+                await expensesService.deleteExpense(user.id, id);
                 dispatch({ type: 'DELETE_EXPENSE', payload: id });
             } else {
+                await incomesService.deleteIncome(user.id, id);
                 dispatch({ type: 'DELETE_INCOME', payload: id });
             }
+        } catch (err: any) {
+            console.error('Error deleting transaction:', err);
+            setError(err.message || 'Failed to delete transaction. Please try again.');
+            // Show error for a few seconds
+            setTimeout(() => setError(null), 5000);
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -222,6 +314,12 @@ const TransactionList: React.FC = () => {
     return (
         <Card className="mt-8">
             <h2 className="text-xl font-medium text-on-surface-variant mb-4">Transaction History</h2>
+            
+            {error && (
+                <div className="bg-error-container border border-error rounded-lg p-2 sm:p-2.5 mb-4">
+                    <p className="text-[10px] sm:text-xs text-error">{error}</p>
+                </div>
+            )}
             
             <div className="flex flex-col md:flex-row gap-4 mb-4">
                 <div className="flex-1">
@@ -271,7 +369,8 @@ const TransactionList: React.FC = () => {
                             </p>
                             <button 
                                 onClick={() => handleDelete(t.id, t.type, t.description)} 
-                                className="text-on-surface-variant hover:text-error transition-colors p-1 rounded-full" 
+                                disabled={deletingId === t.id}
+                                className="text-on-surface-variant hover:text-error transition-colors p-1 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" 
                                 aria-label={`Delete transaction: ${t.description}`}
                             >
                                 <TrashIcon className="h-5 w-5" />

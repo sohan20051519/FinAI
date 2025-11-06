@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import BottomNav from './components/layout/BottomNav';
 import Dashboard from './components/dashboard/Dashboard';
@@ -10,11 +10,13 @@ import Reports from './components/reports/Reports';
 import Onboarding from './components/onboarding/Onboarding';
 import SignIn from './components/auth/SignIn';
 import SignUp from './components/auth/SignUp';
+import GamificationDashboard from './components/gamification/GamificationDashboard';
+import FamilyChat from './components/family/FamilyChat';
 import { AppProvider, useAppState, useAppDispatch } from './context/AppContext';
 import { supabase } from './lib/supabase';
 import { userProfileService, fixedExpensesService, expensesService, incomesService } from './services/supabaseService';
 
-export type View = 'dashboard' | 'expenses' | 'planner' | 'assistant' | 'reports';
+export type View = 'dashboard' | 'expenses' | 'planner' | 'assistant' | 'reports' | 'gamification' | 'family';
 
 const AppContent: React.FC = () => {
   const { isOnboardingComplete, isAuthenticated } = useAppState();
@@ -26,18 +28,41 @@ const AppContent: React.FC = () => {
   const [authInfoMessage, setAuthInfoMessage] = useState<string | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
-  // Load user data from Supabase
-  const loadUserData = async (userId: string) => {
+  // Load user data from Supabase with individual timeouts
+  const loadUserData = useCallback(async (userId: string) => {
     try {
-      // Load user profile
-      const profile = await userProfileService.getProfile(userId);
+      // Load user profile with timeout
+      const profilePromise = userProfileService.getProfile(userId);
+      const profileTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile load timeout')), 3000)
+      );
+      
+      let profile;
+      try {
+        profile = await Promise.race([profilePromise, profileTimeout]);
+      } catch (error) {
+        console.warn('Profile load failed or timed out:', error);
+        profile = null;
+      }
       
       if (profile) {
-        // Load all user data
+        // Load all user data with individual timeouts
+        const loadWithTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, defaultValue: T): Promise<T> => {
+          try {
+            const timeoutPromise = new Promise<T>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+            );
+            return await Promise.race([promise, timeoutPromise]);
+          } catch (error) {
+            console.warn('Data load timed out, using defaults');
+            return defaultValue;
+          }
+        };
+
         const [fixedExpenses, expenses, incomes] = await Promise.all([
-          fixedExpensesService.getFixedExpenses(userId),
-          expensesService.getExpenses(userId),
-          incomesService.getIncomes(userId),
+          loadWithTimeout(fixedExpensesService.getFixedExpenses(userId), 3000, []),
+          loadWithTimeout(expensesService.getExpenses(userId), 3000, []),
+          loadWithTimeout(incomesService.getIncomes(userId), 3000, []),
         ]);
 
         // Dispatch to load data into context
@@ -56,20 +81,66 @@ const AppContent: React.FC = () => {
             isOnboardingComplete: profile.onboarding_complete,
           },
         });
+      } else {
+        // No profile found - user hasn't completed onboarding
+        // Set onboarding as incomplete
+        dispatch({
+          type: 'LOAD_USER_DATA',
+          payload: {
+            userProfile: null,
+            monthlyIncome: 0,
+            fixedExpenses: [],
+            expenses: [],
+            incomes: [],
+            isOnboardingComplete: false,
+          },
+        });
       }
     } catch (error) {
       console.error('Error loading user data:', error);
+      // On error, still set onboarding as incomplete so user can complete it
+      dispatch({
+        type: 'LOAD_USER_DATA',
+        payload: {
+          userProfile: null,
+          monthlyIncome: 0,
+          fixedExpenses: [],
+          expenses: [],
+          incomes: [],
+          isOnboardingComplete: false,
+        },
+      });
     }
-  };
+  }, [dispatch]);
 
   // Check for existing session on mount
   useEffect(() => {
+    let isMounted = true;
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.warn('Session check timeout - clearing loading state');
+        setIsCheckingSession(false);
+      }
+    }, 10000); // 10 second timeout
+
     const checkSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Add a timeout wrapper for the entire getSession call
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 8000)
+        );
+        
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as { data: { session: any }, error: any };
+        
+        if (!isMounted) return;
         
         if (error) {
           console.error('Error checking session:', error);
+          clearTimeout(timeoutId);
           setIsCheckingSession(false);
           return;
         }
@@ -78,18 +149,33 @@ const AppContent: React.FC = () => {
           const user = session.user;
           const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
           
-          // Load user data from Supabase
-          await loadUserData(user.id);
+          // Sign in immediately, don't wait for data loading
+          if (isMounted) {
+            dispatch({
+              type: 'SIGN_IN',
+              payload: { name, email: user.email || '' },
+            });
+            clearTimeout(timeoutId);
+            setIsCheckingSession(false);
+          }
           
-          dispatch({
-            type: 'SIGN_IN',
-            payload: { name, email: user.email || '' },
+          // Load user data in background (don't block authentication)
+          loadUserData(user.id).catch(error => {
+            console.error('Error loading user data in background:', error);
           });
+        } else {
+          // No session - clear loading state
+          if (isMounted) {
+            clearTimeout(timeoutId);
+            setIsCheckingSession(false);
+          }
         }
       } catch (error) {
         console.error('Error checking session:', error);
-      } finally {
-        setIsCheckingSession(false);
+        if (isMounted) {
+          clearTimeout(timeoutId);
+          setIsCheckingSession(false);
+        }
       }
     };
 
@@ -97,26 +183,44 @@ const AppContent: React.FC = () => {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const user = session.user;
-        const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
-        
-        // Load user data from Supabase
-        await loadUserData(user.id);
-        
-        dispatch({
-          type: 'SIGN_IN',
-          payload: { name, email: user.email || '' },
-        });
-      } else if (event === 'SIGNED_OUT') {
-        dispatch({ type: 'SIGN_OUT' });
+      try {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const user = session.user;
+          const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+          
+          // Sign in immediately
+          dispatch({
+            type: 'SIGN_IN',
+            payload: { name, email: user.email || '' },
+          });
+          setIsCheckingSession(false);
+          
+          // Load user data in background (don't block authentication)
+          loadUserData(user.id).catch(error => {
+            console.error('Error loading user data in background:', error);
+          });
+        } else if (event === 'SIGNED_OUT') {
+          dispatch({ type: 'SIGN_OUT' });
+          setIsCheckingSession(false);
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Session refreshed, ensure we're not stuck in loading
+          setIsCheckingSession(false);
+        } else {
+          // For any other event, ensure loading state is cleared
+          setIsCheckingSession(false);
+        }
+      } catch (error) {
+        console.error('Error in auth state change handler:', error);
+        setIsCheckingSession(false);
       }
     });
 
     return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, [dispatch]);
+  }, [dispatch, loadUserData]);
 
   // Show authentication pages if not authenticated
   if (!isAuthenticated) {
@@ -142,6 +246,10 @@ const AppContent: React.FC = () => {
           dispatch({
             type: 'SIGN_IN',
             payload: { name, email },
+          });
+          // Load user data in background
+          loadUserData(data.user.id).catch(error => {
+            console.error('Error loading user data after sign in:', error);
           });
         }
       } catch (error: any) {
@@ -189,6 +297,10 @@ const AppContent: React.FC = () => {
             dispatch({
               type: 'SIGN_UP',
               payload: { name: userName, email },
+            });
+            // Load user data in background
+            loadUserData(data.user.id).catch(error => {
+              console.error('Error loading user data after sign up:', error);
             });
           } else {
             // Email confirmation required - show as info message (green)
@@ -321,22 +433,27 @@ const AppContent: React.FC = () => {
         return <AIAssistant />;
       case 'reports':
         return <Reports />;
+      case 'gamification':
+        return <GamificationDashboard />;
+      case 'family':
+        return <FamilyChat />;
       default:
         return <Dashboard />;
     }
   };
 
   const isAssistantView = currentView === 'assistant';
+  const isFamilyView = currentView === 'family';
 
   return (
-    <div className="flex h-screen w-full bg-background text-on-background">
+    <div className="flex h-screen w-full bg-background text-on-background overflow-hidden">
       <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
-      <main className={`flex-1 ${isAssistantView ? 'overflow-hidden' : 'overflow-y-auto'} pb-20 md:pb-0`}>
-        <div className={`p-4 sm:p-6 lg:p-8 ${isAssistantView ? 'h-full' : ''}`}>
+      <main className={`flex-1 ${isAssistantView || isFamilyView ? 'overflow-hidden' : 'overflow-y-auto'} pb-20 md:pb-0 ${isFamilyView ? 'h-full' : ''}`}>
+        <div className={`${isFamilyView ? 'h-full' : 'p-4 sm:p-6 lg:p-8'} ${isAssistantView ? 'h-full' : ''}`}>
           {renderView()}
         </div>
       </main>
-      <BottomNav currentView={currentView} setCurrentView={setCurrentView} />
+      {!isFamilyView && <BottomNav currentView={currentView} setCurrentView={setCurrentView} />}
     </div>
   );
 };

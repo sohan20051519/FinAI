@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from '../../App';
-import { HomeIcon, PlusCircleIcon, ShoppingCartIcon, ChatBubbleLeftRightIcon, ChartBarIcon } from '../icons/Icons';
+import { HomeIcon, PlusCircleIcon, ShoppingCartIcon, ChatBubbleLeftRightIcon, ChartBarIcon, TrophyIcon, UsersIcon } from '../icons/Icons';
 import { useAppDispatch } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface SidebarProps {
   currentView: View;
@@ -36,23 +37,45 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
   const dispatch = useAppDispatch();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <HomeIcon /> },
     { id: 'expenses', label: 'Log Transaction', icon: <PlusCircleIcon /> },
     { id: 'planner', label: 'Planner', icon: <ShoppingCartIcon /> },
     { id: 'assistant', label: 'Assistant', icon: <ChatBubbleLeftRightIcon /> },
     { id: 'reports', label: 'Reports', icon: <ChartBarIcon /> },
+    { id: 'gamification', label: 'Achievements', icon: <TrophyIcon /> },
+    { id: 'family', label: 'Family', icon: <UsersIcon /> },
   ];
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = async () => {
+    setIsLoggingOut(true);
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+      }
+      // Always dispatch SIGN_OUT to clear local state
       dispatch({ type: 'SIGN_OUT' });
+      setShowLogoutConfirm(false);
     } catch (error) {
       console.error('Error signing out:', error);
       // Still dispatch SIGN_OUT even if Supabase signOut fails
       dispatch({ type: 'SIGN_OUT' });
+      setShowLogoutConfirm(false);
+    } finally {
+      setIsLoggingOut(false);
     }
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
   };
 
   return (
@@ -83,12 +106,25 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
 
       {/* Logout Button */}
       <button
-        onClick={handleLogout}
-        className="flex items-center gap-3 w-full py-3 px-4 rounded-xl text-on-surface-variant hover:bg-surface-variant hover:text-error transition-colors duration-200 mt-auto"
+        onClick={handleLogoutClick}
+        disabled={isLoggingOut}
+        className="flex items-center gap-3 w-full py-3 px-4 rounded-xl text-on-surface-variant hover:bg-surface-variant hover:text-error transition-colors duration-200 mt-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <LogoutIcon className="h-6 w-6" />
-        <span className="text-sm font-medium">Logout</span>
+        <span className="text-sm font-medium">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
       </button>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Confirm Logout"
+        message="Are you sure you want to log out? You'll need to sign in again to access your data."
+        confirmText="Logout"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
     </aside>
   );
 };

@@ -3,6 +3,8 @@ import { getAssistantResponse } from '../../services/geminiService';
 import { useAppState } from '../../context/AppContext';
 import { ChatMessage } from '../../types';
 import { PaperAirplaneIcon, UserCircleIcon, SparklesIcon } from '../icons/Icons';
+import { supabase } from '../../lib/supabase';
+import { chatMessagesService } from '../../services/supabaseService';
 
 const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
     const isUser = message.role === 'user';
@@ -78,33 +80,115 @@ const QuickActions: React.FC<{ onSelect: (text: string) => void }> = ({ onSelect
     );
 };
 
+const ChatHistorySidebar: React.FC<{ 
+    messages: ChatMessage[];
+    onSelectMessage: (index: number) => void;
+    currentIndex: number;
+}> = ({ messages, onSelectMessage, currentIndex }) => {
+    // Group messages by date
+    const groupedMessages = messages.reduce((acc, msg, index) => {
+        if (msg.role === 'user') {
+            const date = new Date().toLocaleDateString(); // For now, use current date
+            if (!acc[date]) acc[date] = [];
+            acc[date].push({ index, text: msg.text.substring(0, 50) + '...' });
+        }
+        return acc;
+    }, {} as Record<string, Array<{ index: number; text: string }>>);
+
+    return (
+        <div className="w-64 bg-surface-variant/30 rounded-2xl p-4 overflow-y-auto h-full">
+            <h3 className="text-lg font-semibold text-on-surface mb-4">Chat History</h3>
+            {Object.keys(groupedMessages).length === 0 ? (
+                <p className="text-sm text-on-surface-variant">No chat history yet</p>
+            ) : (
+                <div className="space-y-4">
+                    {Object.entries(groupedMessages).map(([date, msgs]) => (
+                        <div key={date}>
+                            <p className="text-xs font-medium text-on-surface-variant mb-2">{date}</p>
+                            <div className="space-y-2">
+                                {msgs.map((msg) => (
+                                    <button
+                                        key={msg.index}
+                                        onClick={() => onSelectMessage(msg.index)}
+                                        className={`w-full text-left p-2 rounded-lg text-sm transition-colors ${
+                                            currentIndex === msg.index
+                                                ? 'bg-primary-container text-on-primary-container'
+                                                : 'bg-surface-variant/50 text-on-surface-variant hover:bg-surface-variant'
+                                        }`}
+                                    >
+                                        {msg.text}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const AIAssistant: React.FC = () => {
     const { expenses, incomes, userProfile } = useAppState();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    const [selectedMessageIndex, setSelectedMessageIndex] = useState<number | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Load chat history on mount
     useEffect(() => {
-        if (messages.length === 0) {
-            if (userProfile?.name) {
-                setMessages([
-                    { 
-                        role: 'model', 
-                        text: `Hello ${userProfile.name}! 👋 I'm your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?` 
+        const loadChatHistory = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const chatData = await chatMessagesService.getChatMessages(user.id);
+                if (chatData && chatData.messages.length > 0) {
+                    setMessages(chatData.messages);
+                } else {
+                    // Initialize with greeting if no history
+                    if (userProfile?.name) {
+                        setMessages([
+                            { 
+                                role: 'model', 
+                                text: `Hello ${userProfile.name}! 👋 I'm your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?` 
+                            }
+                        ]);
+                    } else {
+                        setMessages([
+                            { 
+                                role: 'model', 
+                                text: 'Hello! 👋 I\'m your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?' 
+                            }
+                        ]);
                     }
-                ]);
-            } else {
-                setMessages([
-                    { 
-                        role: 'model', 
-                        text: 'Hello! 👋 I\'m your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?' 
-                    }
-                ]);
+                }
+            } catch (error) {
+                console.error('Error loading chat history:', error);
+                // Initialize with greeting on error
+                if (userProfile?.name) {
+                    setMessages([
+                        { 
+                            role: 'model', 
+                            text: `Hello ${userProfile.name}! 👋 I'm your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?` 
+                        }
+                    ]);
+                } else {
+                    setMessages([
+                        { 
+                            role: 'model', 
+                            text: 'Hello! 👋 I\'m your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?' 
+                        }
+                    ]);
+                }
             }
-        }
-    }, [userProfile, messages.length]);
+        };
+
+        loadChatHistory();
+    }, [userProfile]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -123,14 +207,37 @@ const AIAssistant: React.FC = () => {
         try {
             const response = await getAssistantResponse(messages, expenses, incomes, userProfile, userInput);
             const modelMessage: ChatMessage = { role: 'model', text: response };
-            setMessages(prev => [...prev, modelMessage]);
+            const updatedMessages = [...messages, userMessage, modelMessage];
+            setMessages(updatedMessages);
+            
+            // Save chat history to Supabase
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await chatMessagesService.saveChatMessages(user.id, updatedMessages);
+                }
+            } catch (saveError) {
+                console.warn('Failed to save chat history:', saveError);
+                // Don't show error to user, just log it
+            }
         } catch (error) {
             console.error('Chat error:', error);
             const errorMessage: ChatMessage = { 
                 role: 'model', 
                 text: 'Sorry, I encountered an error while processing your request. Please try again or check your internet connection.' 
             };
-            setMessages(prev => [...prev, errorMessage]);
+            const updatedMessages = [...messages, userMessage, errorMessage];
+            setMessages(updatedMessages);
+            
+            // Save chat history even on error
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await chatMessagesService.saveChatMessages(user.id, updatedMessages);
+                }
+            } catch (saveError) {
+                console.warn('Failed to save chat history:', saveError);
+            }
         } finally {
             setLoading(false);
             inputRef.current?.focus();
@@ -144,26 +251,56 @@ const AIAssistant: React.FC = () => {
 
     const showQuickActions = messages.length === 1 && !loading;
 
-    return (
-        <div className="h-full flex flex-col max-w-4xl mx-auto w-full">
-            {/* Header */}
-            <div className="mb-4 sm:mb-6 flex-shrink-0">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-container flex items-center justify-center">
-                        <SparklesIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-on-background">FinAI Assistant</h1>
-                        <p className="text-xs sm:text-sm text-on-surface-variant">Your personal financial advisor</p>
-                    </div>
-                </div>
-            </div>
+    const handleSelectMessage = (index: number) => {
+        setSelectedMessageIndex(index);
+        // Scroll to the selected message
+        const messageElement = document.getElementById(`message-${index}`);
+        if (messageElement) {
+            messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
 
-            {/* Chat Messages Area */}
-            <div className="flex-1 overflow-y-auto bg-surface-variant/30 rounded-2xl p-4 sm:p-6 mb-4 min-h-0">
+    return (
+        <div className="h-full flex gap-4 max-w-7xl mx-auto w-full">
+            {/* Chat History Sidebar */}
+            {showHistory && (
+                <div className="hidden lg:block flex-shrink-0">
+                    <ChatHistorySidebar
+                        messages={messages}
+                        onSelectMessage={handleSelectMessage}
+                        currentIndex={selectedMessageIndex || -1}
+                    />
+                </div>
+            )}
+
+            {/* Main Chat Area */}
+            <div className="flex-1 h-full flex flex-col">
+                {/* Header */}
+                <div className="mb-4 sm:mb-6 flex-shrink-0 flex items-center justify-between">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-container flex items-center justify-center">
+                            <SparklesIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-bold text-on-background">FinAI Assistant</h1>
+                            <p className="text-xs sm:text-sm text-on-surface-variant">Your personal financial advisor</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="px-4 py-2 bg-surface-variant/50 hover:bg-surface-variant text-on-surface-variant rounded-lg transition-colors text-sm"
+                    >
+                        {showHistory ? 'Hide' : 'Show'} History
+                    </button>
+                </div>
+
+                {/* Chat Messages Area */}
+                <div className="flex-1 overflow-y-auto bg-surface-variant/30 rounded-2xl p-4 sm:p-6 mb-4 min-h-0">
                 <div className="space-y-1">
                     {messages.map((msg, index) => (
-                        <MessageBubble key={index} message={msg} />
+                        <div key={index} id={`message-${index}`}>
+                            <MessageBubble message={msg} />
+                        </div>
                     ))}
                     {loading && <TypingIndicator />}
                     {showQuickActions && <QuickActions onSelect={handleQuickAction} />}
@@ -205,6 +342,7 @@ const AIAssistant: React.FC = () => {
                     FinAI can analyze your expenses, income, and provide financial insights
                 </p>
             </form>
+            </div>
         </div>
     );
 };

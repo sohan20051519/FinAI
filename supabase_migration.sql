@@ -66,6 +66,38 @@ CREATE POLICY "Users can view their own profile"
   ON user_profiles FOR SELECT
   USING (auth.uid() = user_id);
 
+-- Create a security definer function to get family member user IDs
+CREATE OR REPLACE FUNCTION get_family_member_user_ids(check_user_id UUID)
+RETURNS TABLE(user_id UUID)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+BEGIN
+  -- This query bypasses RLS because the function runs with SECURITY DEFINER
+  RETURN QUERY
+  SELECT DISTINCT fm2.user_id
+  FROM family_members fm1
+  JOIN family_members fm2 ON fm1.family_group_id = fm2.family_group_id
+  WHERE fm1.user_id = check_user_id;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION get_family_member_user_ids(UUID) TO authenticated;
+
+DROP POLICY IF EXISTS "Users can view family member profiles" ON user_profiles;
+CREATE POLICY "Users can view family member profiles"
+  ON user_profiles FOR SELECT
+  USING (
+    -- Allow viewing profiles of users who are in the same family group
+    -- Use security definer function to avoid recursion
+    user_id IN (
+      SELECT user_id FROM get_family_member_user_ids(auth.uid())
+    )
+  );
+
 DROP POLICY IF EXISTS "Users can insert their own profile" ON user_profiles;
 CREATE POLICY "Users can insert their own profile"
   ON user_profiles FOR INSERT

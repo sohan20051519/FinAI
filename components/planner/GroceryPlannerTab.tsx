@@ -7,7 +7,9 @@ import { generateGroceryPlan, generateImagePlan, generateVideoPlan } from '../..
 import { MealPlan, GroceryItem, Meal } from '../../types';
 import { useAppState } from '../../context/AppContext';
 import { downloadPlanAsPDF, downloadImage, downloadVideo } from '../../utils/downloadUtils';
-import { ArrowDownTrayIcon } from '../icons/Icons';
+import { ArrowDownTrayIcon, TrashIcon } from '../icons/Icons';
+import { supabase } from '../../lib/supabase';
+import { mealPlansService } from '../../services/supabaseService';
 
 interface GroceryPlannerTabProps {
     onGroceryListGenerated: (list: GroceryItem[]) => void;
@@ -94,13 +96,29 @@ const PlannerForm: React.FC<{
   );
 };
 
+interface SavedPlan {
+  id: string;
+  name: string;
+  mealPlan: MealPlan;
+  budget?: number;
+  people?: number;
+  region?: string;
+  preferences?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const PlanDisplay: React.FC<{ 
     plan: MealPlan; 
     budget: number; 
     people: number; 
     region: string; 
     preferences: string;
-}> = ({ plan, budget, people, region, preferences }) => {
+    onSave?: (name: string) => void;
+    onDelete?: () => void;
+    savedPlanId?: string;
+    isSaving?: boolean;
+}> = ({ plan, budget, people, region, preferences, onSave, onDelete, savedPlanId, isSaving }) => {
     // FIX: Explicitly type the initial value of the reduce function to prevent TypeScript
     // from inferring `groupedList` as `unknown`, which causes a downstream error on `items.map`.
     const groupedList = (plan.groceryList || []).reduce((acc: Record<string, GroceryItem[]>, item) => {
@@ -112,22 +130,99 @@ const PlanDisplay: React.FC<{
         return acc;
     }, {} as Record<string, GroceryItem[]>);
 
+    const [saveName, setSaveName] = useState('');
+    const [showSaveDialog, setShowSaveDialog] = useState(false);
+
     const handleDownloadPDF = () => {
         downloadPlanAsPDF(plan, budget, people, region, preferences);
     };
 
+    const handleSaveClick = () => {
+        if (savedPlanId) {
+            // Already saved, just update
+            if (onSave) onSave(saveName || `Meal Plan - ${new Date().toLocaleDateString()}`);
+        } else {
+            // Show save dialog
+            setShowSaveDialog(true);
+        }
+    };
+
+    const handleSaveConfirm = () => {
+        if (onSave) {
+            onSave(saveName || `Meal Plan - ${new Date().toLocaleDateString()}`);
+            setShowSaveDialog(false);
+            setSaveName('');
+        }
+    };
+
     return (
         <div className="mt-8">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
                 <h2 className="text-2xl font-medium text-on-surface-variant">Meal Plan & Grocery List</h2>
-                <Button
-                    type="button"
-                    onClick={handleDownloadPDF}
-                    className="flex items-center gap-2"
-                >
-                    <ArrowDownTrayIcon className="h-5 w-5" />
-                    Download PDF
-                </Button>
+                <div className="flex gap-2 flex-wrap">
+                    {onSave && (
+                        <>
+                            {showSaveDialog ? (
+                                <div className="flex gap-2 items-center">
+                                    <input
+                                        type="text"
+                                        value={saveName}
+                                        onChange={(e) => setSaveName(e.target.value)}
+                                        placeholder="Plan name..."
+                                        className="bg-surface-variant/50 p-2 rounded-lg border border-outline/30 text-on-surface"
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSaveConfirm()}
+                                        autoFocus
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={handleSaveConfirm}
+                                        disabled={isSaving}
+                                        className="!px-4"
+                                    >
+                                        {isSaving ? 'Saving...' : 'Save'}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowSaveDialog(false);
+                                            setSaveName('');
+                                        }}
+                                        className="!px-4 !bg-secondary-container !text-on-secondary-container"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    onClick={handleSaveClick}
+                                    disabled={isSaving}
+                                    className="flex items-center gap-2"
+                                >
+                                    {isSaving ? 'Saving...' : savedPlanId ? 'Update Saved' : 'Save Plan'}
+                                </Button>
+                            )}
+                            {savedPlanId && onDelete && (
+                                <Button
+                                    type="button"
+                                    onClick={onDelete}
+                                    className="flex items-center gap-2 !bg-error-container !text-on-error-container"
+                                >
+                                    <TrashIcon className="h-5 w-5" />
+                                    Delete
+                                </Button>
+                            )}
+                        </>
+                    )}
+                    <Button
+                        type="button"
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-2"
+                    >
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        Download PDF
+                    </Button>
+                </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
@@ -169,6 +264,10 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
+  const [currentSavedPlanId, setCurrentSavedPlanId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState<'text' | 'image' | 'video' | null>(null);
   const [error, setError] = useState('');
@@ -189,7 +288,93 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
         }
     };
     checkApiKey();
+    loadSavedPlans();
   }, []);
+
+  const loadSavedPlans = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const plans = await mealPlansService.getMealPlans(user.id);
+      setSavedPlans(plans);
+    } catch (error) {
+      console.error('Error loading saved plans:', error);
+    }
+  };
+
+  const handleSavePlan = async (name: string) => {
+    if (!plan) return;
+    
+    setIsSaving(true);
+    setSaveError(null);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const savedPlan = await mealPlansService.saveMealPlan(
+        user.id,
+        plan,
+        name,
+        parseInt(formState.budget),
+        parseInt(formState.people),
+        formState.region,
+        formState.preferences,
+        currentSavedPlanId || undefined
+      );
+      
+      setCurrentSavedPlanId(savedPlan.id);
+      await loadSavedPlans();
+    } catch (err: any) {
+      console.error('Error saving plan:', err);
+      setSaveError(err.message || 'Failed to save plan');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLoadPlan = async (planId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const savedPlan = await mealPlansService.getMealPlan(user.id, planId);
+      if (savedPlan) {
+        setPlan(savedPlan.mealPlan);
+        setCurrentSavedPlanId(savedPlan.id);
+        if (savedPlan.budget) setFormState(prev => ({ ...prev, budget: savedPlan.budget!.toString() }));
+        if (savedPlan.people) setFormState(prev => ({ ...prev, people: savedPlan.people!.toString() }));
+        if (savedPlan.region) setFormState(prev => ({ ...prev, region: savedPlan.region! }));
+        if (savedPlan.preferences) setFormState(prev => ({ ...prev, preferences: savedPlan.preferences! }));
+        if (savedPlan.mealPlan.groceryList) {
+          onGroceryListGenerated(savedPlan.mealPlan.groceryList);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading plan:', error);
+      setError('Failed to load saved plan');
+    }
+  };
+
+  const handleDeletePlan = async () => {
+    if (!currentSavedPlanId) return;
+    
+    if (!window.confirm('Are you sure you want to delete this saved plan?')) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      await mealPlansService.deleteMealPlan(user.id, currentSavedPlanId);
+      setCurrentSavedPlanId(null);
+      setPlan(null);
+      await loadSavedPlans();
+    } catch (error) {
+      console.error('Error deleting plan:', error);
+      setError('Failed to delete plan');
+    }
+  };
 
   const handleSelectApiKey = async () => {
     if ((window as any).aistudio) {
@@ -217,8 +402,30 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
       if (type === 'text') {
         const result = await generateGroceryPlan(parseInt(budget), parseInt(people), preferences, region);
         setPlan(result);
+        setCurrentSavedPlanId(null); // New plan, not saved yet
         if (result.groceryList) {
             onGroceryListGenerated(result.groceryList);
+        }
+        // Autosave after generating
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const autoSaveName = `Meal Plan - ${new Date().toLocaleDateString()}`;
+            const savedPlan = await mealPlansService.saveMealPlan(
+              user.id,
+              result,
+              autoSaveName,
+              parseInt(budget),
+              parseInt(people),
+              region,
+              preferences
+            );
+            setCurrentSavedPlanId(savedPlan.id);
+            await loadSavedPlans();
+          }
+        } catch (err) {
+          console.warn('Autosave failed:', err);
+          // Don't show error for autosave failures
         }
       } else if (type === 'image') {
         const result = await generateImagePlan(parseInt(budget), parseInt(people), preferences, region);
@@ -247,6 +454,35 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
 
   return (
     <div>
+      {/* Saved Plans Dropdown */}
+      {savedPlans.length > 0 && (
+        <Card className="mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <label className="text-sm font-medium text-on-surface-variant">Load Saved Plan:</label>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) handleLoadPlan(e.target.value);
+              }}
+              className="flex-1 bg-surface-variant/50 p-2 rounded-lg border border-outline/30 text-on-surface"
+            >
+              <option value="">Select a saved plan...</option>
+              {savedPlans.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({new Date(p.createdAt).toLocaleDateString()})
+                </option>
+              ))}
+            </select>
+          </div>
+        </Card>
+      )}
+
+      {saveError && (
+        <div className="mb-4 bg-error-container border border-error rounded-lg p-2 sm:p-2.5">
+          <p className="text-[10px] sm:text-xs text-error">{saveError}</p>
+        </div>
+      )}
+
       <PlannerForm 
         onGenerate={handleGenerate} 
         loading={loading}
@@ -275,6 +511,10 @@ const GroceryPlannerTab: React.FC<GroceryPlannerTabProps> = ({ onGroceryListGene
           people={parseInt(formState.people)} 
           region={formState.region} 
           preferences={formState.preferences}
+          onSave={handleSavePlan}
+          onDelete={handleDeletePlan}
+          savedPlanId={currentSavedPlanId || undefined}
+          isSaving={isSaving}
         />
       )}
       

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../../App';
-import { HomeIcon, PlusCircleIcon, ShoppingCartIcon, ChatBubbleLeftRightIcon, ChartBarIcon } from '../icons/Icons';
+import { HomeIcon, PlusCircleIcon, ShoppingCartIcon, ChatBubbleLeftRightIcon, ChartBarIcon, TrophyIcon, UsersIcon } from '../icons/Icons';
 
 interface BottomNavProps {
   currentView: View;
@@ -32,6 +32,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentView, setCurrentView }) =>
     { id: 'planner', label: 'Plan', icon: <ShoppingCartIcon /> },
     { id: 'assistant', label: 'AI', icon: <ChatBubbleLeftRightIcon /> },
     { id: 'reports', label: 'Stats', icon: <ChartBarIcon /> },
+    { id: 'gamification', label: 'Achieve', icon: <TrophyIcon /> },
+    { id: 'family', label: 'Family', icon: <UsersIcon /> },
   ];
 
   return (

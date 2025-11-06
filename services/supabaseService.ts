@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { UserProfile, FixedExpense, Expense, Income } from '../types';
+import { UserProfile, FixedExpense, Expense, Income, MealPlan, ChatMessage, Recipe, GroceryItem } from '../types';
 
 // User Profile Operations
 export const userProfileService = {
@@ -251,6 +251,503 @@ export const incomesService = {
 
     // Insert new initial income
     return await this.addIncome(userId, income);
+  },
+};
+
+// Meal Plans Operations
+export const mealPlansService = {
+  // Get all meal plans for a user
+  async getMealPlans(userId: string) {
+    const { data, error } = await supabase
+      .from('meal_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching meal plans:', error);
+      return [];
+    }
+
+    return data.map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      mealPlan: plan.meal_plan as MealPlan,
+      budget: plan.budget,
+      people: plan.people,
+      region: plan.region,
+      preferences: plan.preferences,
+      createdAt: plan.created_at,
+      updatedAt: plan.updated_at,
+    }));
+  },
+
+  // Get a single meal plan
+  async getMealPlan(userId: string, planId: string) {
+    const { data, error } = await supabase
+      .from('meal_plans')
+      .select('*')
+      .eq('id', planId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching meal plan:', error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      mealPlan: data.meal_plan as MealPlan,
+      budget: data.budget,
+      people: data.people,
+      region: data.region,
+      preferences: data.preferences,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  },
+
+  // Save a meal plan
+  async saveMealPlan(
+    userId: string,
+    mealPlan: MealPlan,
+    name: string,
+    budget?: number,
+    people?: number,
+    region?: string,
+    preferences?: string,
+    planId?: string
+  ) {
+    const planData: any = {
+      user_id: userId,
+      name,
+      meal_plan: mealPlan,
+      budget: budget || null,
+      people: people || null,
+      region: region || null,
+      preferences: preferences || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (planId) {
+      // Update existing plan
+      const { data, error } = await supabase
+        .from('meal_plans')
+        .update(planData)
+        .eq('id', planId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating meal plan:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        mealPlan: data.meal_plan as MealPlan,
+        budget: data.budget,
+        people: data.people,
+        region: data.region,
+        preferences: data.preferences,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    } else {
+      // Create new plan
+      const { data, error } = await supabase
+        .from('meal_plans')
+        .insert(planData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving meal plan:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        mealPlan: data.meal_plan as MealPlan,
+        budget: data.budget,
+        people: data.people,
+        region: data.region,
+        preferences: data.preferences,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    }
+  },
+
+  // Delete a meal plan
+  async deleteMealPlan(userId: string, planId: string) {
+    const { error } = await supabase
+      .from('meal_plans')
+      .delete()
+      .eq('id', planId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting meal plan:', error);
+      throw error;
+    }
+  },
+};
+
+// Chat Messages Operations
+export const chatMessagesService = {
+  // Get chat messages for a user (there's only one chat per user)
+  async getChatMessages(userId: string) {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error fetching chat messages:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      messages: data.messages as ChatMessage[],
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  },
+
+  // Save chat messages (upsert - one chat per user)
+  async saveChatMessages(userId: string, messages: ChatMessage[]) {
+    const { data: existing } = await supabase
+      .from('chat_messages')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    const chatData: any = {
+      user_id: userId,
+      messages: messages,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing) {
+      // Update existing chat
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .update(chatData)
+        .eq('id', existing.id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating chat messages:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        messages: data.messages as ChatMessage[],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    } else {
+      // Create new chat
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert(chatData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving chat messages:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        messages: data.messages as ChatMessage[],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    }
+  },
+
+  // Delete chat messages
+  async deleteChatMessages(userId: string) {
+    const { error } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting chat messages:', error);
+      throw error;
+    }
+  },
+};
+
+// Recipes Operations
+export const recipesService = {
+  // Get all recipes for a user
+  async getRecipes(userId: string) {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching recipes:', error);
+      return [];
+    }
+
+    return data.map(recipe => ({
+      id: recipe.id,
+      name: recipe.name,
+      recipe: recipe.recipe as Recipe,
+      ingredients: recipe.ingredients,
+      preferences: recipe.preferences,
+      createdAt: recipe.created_at,
+      updatedAt: recipe.updated_at,
+    }));
+  },
+
+  // Get a single recipe
+  async getRecipe(userId: string, recipeId: string) {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('id', recipeId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching recipe:', error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      recipe: data.recipe as Recipe,
+      ingredients: data.ingredients,
+      preferences: data.preferences,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  },
+
+  // Save a recipe
+  async saveRecipe(
+    userId: string,
+    recipe: Recipe,
+    name: string,
+    ingredients?: string,
+    preferences?: string,
+    recipeId?: string
+  ) {
+    const recipeData: any = {
+      user_id: userId,
+      name,
+      recipe: recipe,
+      ingredients: ingredients || null,
+      preferences: preferences || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (recipeId) {
+      // Update existing recipe
+      const { data, error } = await supabase
+        .from('recipes')
+        .update(recipeData)
+        .eq('id', recipeId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating recipe:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        recipe: data.recipe as Recipe,
+        ingredients: data.ingredients,
+        preferences: data.preferences,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    } else {
+      // Create new recipe
+      const { data, error } = await supabase
+        .from('recipes')
+        .insert(recipeData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving recipe:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        recipe: data.recipe as Recipe,
+        ingredients: data.ingredients,
+        preferences: data.preferences,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    }
+  },
+
+  // Delete a recipe
+  async deleteRecipe(userId: string, recipeId: string) {
+    const { error } = await supabase
+      .from('recipes')
+      .delete()
+      .eq('id', recipeId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting recipe:', error);
+      throw error;
+    }
+  },
+};
+
+// Grocery Lists Operations
+export const groceryListsService = {
+  // Get all grocery lists for a user
+  async getGroceryLists(userId: string) {
+    const { data, error } = await supabase
+      .from('grocery_lists')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching grocery lists:', error);
+      return [];
+    }
+
+    return data.map(list => ({
+      id: list.id,
+      name: list.name,
+      items: list.items as GroceryItem[],
+      createdAt: list.created_at,
+      updatedAt: list.updated_at,
+    }));
+  },
+
+  // Get a single grocery list
+  async getGroceryList(userId: string, listId: string) {
+    const { data, error } = await supabase
+      .from('grocery_lists')
+      .select('*')
+      .eq('id', listId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching grocery list:', error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      items: data.items as GroceryItem[],
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  },
+
+  // Save a grocery list
+  async saveGroceryList(
+    userId: string,
+    items: GroceryItem[],
+    name: string,
+    listId?: string
+  ) {
+    const listData: any = {
+      user_id: userId,
+      name,
+      items: items,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (listId) {
+      // Update existing list
+      const { data, error } = await supabase
+        .from('grocery_lists')
+        .update(listData)
+        .eq('id', listId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating grocery list:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        items: data.items as GroceryItem[],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    } else {
+      // Create new list
+      const { data, error } = await supabase
+        .from('grocery_lists')
+        .insert(listData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving grocery list:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        items: data.items as GroceryItem[],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    }
+  },
+
+  // Delete a grocery list
+  async deleteGroceryList(userId: string, listId: string) {
+    const { error } = await supabase
+      .from('grocery_lists')
+      .delete()
+      .eq('id', listId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting grocery list:', error);
+      throw error;
+    }
   },
 };
 
