@@ -37,9 +37,11 @@ interface SignUpProps {
   onGoogleSignUp: () => void;
   onSwitchToSignIn: () => void;
   isLoading?: boolean;
+  error?: string | null;
+  infoMessage?: string | null;
 }
 
-const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleSignUp, onSwitchToSignIn, isLoading = false }) => {
+const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleSignUp, onSwitchToSignIn, isLoading = false, error, infoMessage }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -238,6 +240,20 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleSignUp, onSwitchToSig
                 <p className="mt-0.5 text-[10px] sm:text-xs text-error">{errors.confirmPassword}</p>
               )}
             </div>
+
+            {/* Info Message (Green) */}
+            {infoMessage && (
+              <div className="bg-green-50 dark:bg-green-950/50 border-2 border-green-600 dark:border-green-500 rounded-lg p-2 sm:p-2.5">
+                <p className="text-[10px] sm:text-xs text-green-900 dark:text-green-200 font-semibold">{infoMessage}</p>
+              </div>
+            )}
+
+            {/* Error Message (Red) */}
+            {error && (
+              <div className="bg-error-container border border-error rounded-lg p-2 sm:p-2.5">
+                <p className="text-[10px] sm:text-xs text-error">{error}</p>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button

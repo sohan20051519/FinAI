@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from '../../App';
 import { HomeIcon, PlusCircleIcon, ShoppingCartIcon, ChatBubbleLeftRightIcon, ChartBarIcon } from '../icons/Icons';
 import { useAppDispatch } from '../../context/AppContext';
+import { supabase } from '../../lib/supabase';
 
 interface SidebarProps {
   currentView: View;
@@ -43,8 +44,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
     { id: 'reports', label: 'Reports', icon: <ChartBarIcon /> },
   ];
 
-  const handleLogout = () => {
-    dispatch({ type: 'SIGN_OUT' });
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      dispatch({ type: 'SIGN_OUT' });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Still dispatch SIGN_OUT even if Supabase signOut fails
+      dispatch({ type: 'SIGN_OUT' });
+    }
   };
 
   return (

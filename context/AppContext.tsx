@@ -17,6 +17,7 @@ type Action =
   | { type: 'ADD_INCOME'; payload: Income }
   | { type: 'DELETE_INCOME'; payload: string }
   | { type: 'INITIALIZE_APP'; payload: { userProfile: UserProfile; monthlyIncome: number; fixedExpenses: FixedExpense[] } }
+  | { type: 'LOAD_USER_DATA'; payload: { userProfile: UserProfile; monthlyIncome: number; fixedExpenses: FixedExpense[]; expenses: Expense[]; incomes: Income[]; isOnboardingComplete: boolean } }
   | { type: 'SIGN_IN'; payload: { name: string; email: string } }
   | { type: 'SIGN_UP'; payload: { name: string; email: string } }
   | { type: 'SIGN_OUT' };
@@ -85,6 +86,17 @@ const appReducer = (state: AppState, action: Action): AppState => {
         incomes: [initialIncome],
         expenses: recurringExpenses,
         isOnboardingComplete: true,
+      };
+    }
+    case 'LOAD_USER_DATA': {
+      const { userProfile, monthlyIncome, fixedExpenses, expenses, incomes, isOnboardingComplete } = action.payload;
+      return {
+        ...state,
+        userProfile,
+        fixedExpenses,
+        expenses,
+        incomes,
+        isOnboardingComplete,
       };
     }
     case 'SIGN_IN':

@@ -5,6 +5,8 @@ import { FixedExpense, UserProfile } from '../../types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { XCircleIcon } from '../icons/Icons';
+import { supabase } from '../../lib/supabase';
+import { userProfileService, fixedExpensesService, incomesService } from '../../services/supabaseService';
 
 const Onboarding: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -12,6 +14,8 @@ const Onboarding: React.FC = () => {
   const [monthlyIncome, setMonthlyIncome] = useState<number>(50000);
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [currentExpense, setCurrentExpense] = useState({ name: '', amount: '' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const dispatch = useAppDispatch();
 
@@ -30,11 +34,49 @@ const Onboarding: React.FC = () => {
     setFixedExpenses(fixedExpenses.filter(exp => exp.id !== id));
   };
   
-  const handleFinish = () => {
-    dispatch({
-      type: 'INITIALIZE_APP',
-      payload: { userProfile, monthlyIncome, fixedExpenses }
-    });
+  const handleFinish = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Save user profile to Supabase
+      await userProfileService.upsertProfile(user.id, {
+        ...userProfile,
+        monthlyIncome,
+        onboardingComplete: true,
+      });
+
+      // Save fixed expenses to Supabase
+      await fixedExpensesService.saveFixedExpenses(user.id, fixedExpenses);
+
+      // Create initial income
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
+      await incomesService.saveInitialIncome(user.id, {
+        id: `income-${today.toISOString()}`,
+        amount: monthlyIncome,
+        description: 'Monthly Income',
+        date: todayString,
+        recurring: 'monthly',
+      });
+
+      // Dispatch to update local state
+      dispatch({
+        type: 'INITIALIZE_APP',
+        payload: { userProfile, monthlyIncome, fixedExpenses }
+      });
+    } catch (err: any) {
+      console.error('Error saving onboarding data:', err);
+      setError(err.message || 'Failed to save data. Please try again.');
+      setIsSaving(false);
+    }
   };
 
   const renderStep = () => {
@@ -107,9 +149,16 @@ const Onboarding: React.FC = () => {
                   </div>
                   <Button onClick={handleAddFixedExpense} className="!px-4 !py-2">Add</Button>
               </div>
+              {error && (
+                <div className="bg-error-container border border-error rounded-lg p-2 sm:p-2.5 mb-4">
+                  <p className="text-[10px] sm:text-xs text-error">{error}</p>
+                </div>
+              )}
               <div className="flex gap-4 mt-6">
-                  <Button onClick={() => setStep(2)} className="w-full !bg-secondary-container !text-on-secondary-container">Back</Button>
-                  <Button onClick={handleFinish} className="w-full">Get Started!</Button>
+                  <Button onClick={() => setStep(2)} className="w-full !bg-secondary-container !text-on-secondary-container" disabled={isSaving}>Back</Button>
+                  <Button onClick={handleFinish} className="w-full" disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Get Started!'}
+                  </Button>
               </div>
             </div>
         );

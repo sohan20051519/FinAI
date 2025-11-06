@@ -30,14 +30,33 @@ interface SignInProps {
   onSignIn: (email: string, password: string) => void;
   onGoogleSignIn: () => void;
   onSwitchToSignUp: () => void;
+  onForgotPassword?: (email: string) => void;
   isLoading?: boolean;
+  error?: string | null;
+  infoMessage?: string | null;
 }
 
-const SignIn: React.FC<SignInProps> = ({ onSignIn, onGoogleSignIn, onSwitchToSignUp, isLoading = false }) => {
+const SignIn: React.FC<SignInProps> = ({ onSignIn, onGoogleSignIn, onSwitchToSignUp, onForgotPassword, isLoading = false, error, infoMessage }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  
+  const handleForgotPassword = () => {
+    if (!email.trim()) {
+      setErrors({ ...errors, email: 'Please enter your email address first' });
+      return;
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrors({ ...errors, email: 'Please enter a valid email address' });
+      return;
+    }
+    
+    if (onForgotPassword) {
+      onForgotPassword(email);
+    }
+  };
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -149,11 +168,27 @@ const SignIn: React.FC<SignInProps> = ({ onSignIn, onGoogleSignIn, onSwitchToSig
               )}
             </div>
 
+            {/* Info Message (Green) */}
+            {infoMessage && (
+              <div className="bg-green-50 dark:bg-green-950/50 border-2 border-green-600 dark:border-green-500 rounded-lg p-2 sm:p-2.5">
+                <p className="text-[10px] sm:text-xs text-green-900 dark:text-green-200 font-semibold">{infoMessage}</p>
+              </div>
+            )}
+
+            {/* Error Message (Red) */}
+            {error && (
+              <div className="bg-error-container border border-error rounded-lg p-2 sm:p-2.5">
+                <p className="text-[10px] sm:text-xs text-error">{error}</p>
+              </div>
+            )}
+
             {/* Forgot Password Link */}
             <div className="flex items-center justify-end">
               <button
                 type="button"
-                className="text-[10px] sm:text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                onClick={handleForgotPassword}
+                disabled={isLoading}
+                className="text-[10px] sm:text-xs text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Forgot password?
               </button>
