@@ -5,34 +5,34 @@ import { useAppState } from '../../context/AppContext';
 import { Expense, Income } from '../../types';
 
 const Header: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle }) => (
-    <header className="mb-8">
-        <h1 className="text-4xl font-normal text-on-surface">{title}</h1>
-        <p className="text-base text-on-surface-variant">{subtitle}</p>
+    <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-normal text-on-surface">{title}</h1>
+        <p className="text-sm sm:text-base text-on-surface-variant">{subtitle}</p>
     </header>
 );
 
 const SummaryCard: React.FC<{ title: string; value: string; color: string }> = ({ title, value, color }) => (
     <Card className="flex-1">
-        <p className="text-sm text-on-surface-variant">{title}</p>
-        <p className={`text-3xl font-medium ${color}`}>{value}</p>
+        <p className="text-xs sm:text-sm text-on-surface-variant">{title}</p>
+        <p className={`text-xl sm:text-2xl lg:text-3xl font-medium ${color}`}>{value}</p>
     </Card>
 );
 
 const RecentTransactionItem: React.FC<{ transaction: (Expense & { type: 'expense' }) | (Income & { type: 'income' }) }> = ({ transaction }) => {
     const isExpense = transaction.type === 'expense';
     return (
-        <li className="flex justify-between items-center py-3 border-b border-outline/20">
-            <div>
-                <p className="font-medium text-on-surface">
+        <li className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 py-3 border-b border-outline/20">
+            <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm sm:text-base text-on-surface truncate">
                     {transaction.description}
                     {transaction.recurring && <span className="ml-2 text-xs font-semibold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full align-middle">Monthly</span>}
                 </p>
-                <p className="text-sm text-on-surface-variant">
+                <p className="text-xs sm:text-sm text-on-surface-variant">
                     {isExpense ? `${transaction.category} · ` : 'Income · '} 
                     {new Date(transaction.date).toLocaleDateString()}
                 </p>
             </div>
-            <p className={`font-medium ${isExpense ? 'text-error' : 'text-tertiary'}`}>
+            <p className={`font-medium text-sm sm:text-base flex-shrink-0 ${isExpense ? 'text-error' : 'text-tertiary'}`}>
                 {isExpense ? '-' : '+'}₹{transaction.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
         </li>
@@ -227,10 +227,10 @@ const Dashboard: React.FC = () => {
     const savedAmount = remainingBalance > 0 ? remainingBalance : 0;
 
     return (
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto px-2 sm:px-4">
             <Header title={welcomeMessage} subtitle="Here's a snapshot of your current monthly budget." />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <SummaryCard title="Monthly Income" value={formatCurrency(totalIncome)} color="text-tertiary" />
                 <SummaryCard title="Monthly Spent" value={formatCurrency(totalSpent)} color="text-error" />
                 <SummaryCard title="Remaining This Month" value={formatCurrency(remainingBalance)} color={remainingBalance >= 0 ? "text-on-surface" : "text-error"} />
@@ -248,7 +248,7 @@ const Dashboard: React.FC = () => {
             {savingsSuggestions.length > 0 && <SavingsSuggestionCard suggestions={savingsSuggestions} />}
 
             <Card>
-                <h2 className="text-xl font-medium text-on-surface-variant mb-4">Recent Transactions Logged</h2>
+                <h2 className="text-lg sm:text-xl font-medium text-on-surface-variant mb-4">Recent Transactions Logged</h2>
                 {recentTransactions.length > 0 ? (
                     <ul>
                         {recentTransactions.map(t => (

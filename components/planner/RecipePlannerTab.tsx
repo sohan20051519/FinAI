@@ -281,7 +281,7 @@ ${recipe.instructions.map((step, i) => `${i + 1}. ${step}`).join('\n')}
             <label htmlFor="query" className="block text-sm font-medium text-on-surface-variant mb-1">What would you like to cook?</label>
             <textarea id="query" value={formState.query} onChange={handleInputChange} className="w-full bg-surface-variant/50 p-3 rounded-lg border border-outline/30" rows={2} required />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label htmlFor="ingredients" className="block text-sm font-medium text-on-surface-variant mb-1">Ingredients on hand (optional)</label>
               <input id="ingredients" type="text" value={formState.ingredients} onChange={handleInputChange} className="w-full bg-surface-variant/50 p-3 rounded-lg border border-outline/30" />
@@ -326,9 +326,9 @@ ${recipe.instructions.map((step, i) => `${i + 1}. ${step}`).join('\n')}
 
       {recipe && (
         <Card className="mt-8">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-            <h2 className="text-3xl font-bold text-primary mb-2">{recipe.recipeName}</h2>
-            <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap justify-between items-center gap-3 sm:gap-4 mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-2">{recipe.recipeName}</h2>
+            <div className="flex gap-2 flex-wrap text-xs sm:text-sm">
               {showSaveDialog ? (
                 <div className="flex gap-2 items-center">
                   <input
@@ -404,15 +404,15 @@ ${recipe.instructions.map((step, i) => `${i + 1}. ${step}`).join('\n')}
             <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full"><strong>Servings:</strong> {recipe.servings}</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-              <h3 className="text-xl font-medium text-on-surface mb-2">Ingredients</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="sm:col-span-1">
+              <h3 className="text-lg sm:text-xl font-medium text-on-surface mb-2">Ingredients</h3>
               <ul className="list-disc pl-5 space-y-1 text-on-surface-variant">
                 {recipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
               </ul>
             </div>
-            <div className="md:col-span-2">
-              <h3 className="text-xl font-medium text-on-surface mb-2">Instructions</h3>
+            <div className="sm:col-span-1 lg:col-span-2">
+              <h3 className="text-lg sm:text-xl font-medium text-on-surface mb-2">Instructions</h3>
               <ol className="list-decimal pl-5 space-y-2 text-on-surface-variant">
                 {recipe.instructions.map((step, i) => <li key={i}>{step}</li>)}
               </ol>

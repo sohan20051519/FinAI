@@ -5,6 +5,7 @@ import { ChatMessage } from '../../types';
 import { PaperAirplaneIcon, UserCircleIcon, SparklesIcon } from '../icons/Icons';
 import { supabase } from '../../lib/supabase';
 import { chatMessagesService } from '../../services/supabaseService';
+import { getHealthyAlternatives, getProductsByCategory, getCategories, type HealthyProductSuggestion } from '../../services/healthyProductsService';
 
 const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
     const isUser = message.role === 'user';
@@ -30,7 +31,48 @@ const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
                         ? 'bg-primary text-on-primary rounded-br-md'
                         : 'bg-surface-variant text-on-surface-variant rounded-bl-md'
                 } shadow-sm`}>
-                    <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                    <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
+                        {isUser ? (
+                            <p>{message.text}</p>
+                        ) : (
+                            message.text.split('\n').map((line, idx) => {
+                            // Clean up markdown formatting
+                            let cleanedLine = line
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                                .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+                                .replace(/###\s*(.*)/g, '<strong class="text-base">$1</strong>') // Headers
+                                .replace(/##\s*(.*)/g, '<strong class="text-lg">$1</strong>')
+                                .replace(/#\s*(.*)/g, '<strong class="text-xl">$1</strong>')
+                                .replace(/`(.*?)`/g, '<code class="bg-black/10 px-1 py-0.5 rounded text-xs font-mono">$1</code>'); // Code
+                            
+                            // Handle table separators (remove them)
+                            if (line.trim().match(/^[\|\s:-\|]+$/)) {
+                                return null; // Don't render table separators
+                            }
+                            
+                            // Handle table rows
+                            if (line.includes('|') && !line.match(/^[\|\s:-\|]+$/)) {
+                                const cells = line.split('|').filter(cell => cell.trim());
+                                return (
+                                    <div key={idx} className="flex gap-2 my-1">
+                                        {cells.map((cell, cellIdx) => (
+                                            <span key={cellIdx} className="flex-1 text-xs">
+                                                {cell.trim().replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')}
+                                            </span>
+                                        ))}
+                                    </div>
+                                );
+                            }
+                            
+                            return (
+                                <div 
+                                    key={idx} 
+                                    dangerouslySetInnerHTML={{ __html: cleanedLine || '&nbsp;' }}
+                                    className={idx > 0 ? 'mt-2' : ''}
+                                />
+                            );
+                        }))}
+                    </div>
                 </div>
                 <span className={`text-xs text-on-surface-variant mt-1 px-2 ${isUser ? 'text-right' : 'text-left'}`}>
                     {isUser ? 'You' : 'FinAI'}
@@ -62,7 +104,10 @@ const QuickActions: React.FC<{ onSelect: (text: string) => void }> = ({ onSelect
         "How much did I spend this month?",
         "What are my top expense categories?",
         "Show me my spending trends",
-        "How can I save more money?"
+        "How can I save more money?",
+        "Suggest healthy alternatives to white salt",
+        "What are better options than refined sugar?",
+        "Recommend healthy cooking oils for my family"
     ];
 
     return (
@@ -81,42 +126,70 @@ const QuickActions: React.FC<{ onSelect: (text: string) => void }> = ({ onSelect
 };
 
 const ChatHistorySidebar: React.FC<{ 
-    messages: ChatMessage[];
-    onSelectMessage: (index: number) => void;
-    currentIndex: number;
-}> = ({ messages, onSelectMessage, currentIndex }) => {
-    // Group messages by date
-    const groupedMessages = messages.reduce((acc, msg, index) => {
-        if (msg.role === 'user') {
-            const date = new Date().toLocaleDateString(); // For now, use current date
-            if (!acc[date]) acc[date] = [];
-            acc[date].push({ index, text: msg.text.substring(0, 50) + '...' });
-        }
+    chatSessions: Array<{ id: string; messages: ChatMessage[]; createdAt: string; updatedAt: string }>;
+    onSelectSession: (sessionId: string) => void;
+    currentSessionId: string | null;
+    onNewSession: () => void;
+}> = ({ chatSessions, onSelectSession, currentSessionId, onNewSession }) => {
+    // Group sessions by date
+    const groupedSessions = chatSessions.reduce((acc, session) => {
+        const date = new Date(session.createdAt).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        if (!acc[date]) acc[date] = [];
+        
+        // Get first user message as preview
+        const firstUserMessage = session.messages.find(msg => msg.role === 'user');
+        const preview = firstUserMessage 
+            ? firstUserMessage.text.substring(0, 60) + (firstUserMessage.text.length > 60 ? '...' : '')
+            : 'New conversation';
+        
+        acc[date].push({ 
+            id: session.id, 
+            preview,
+            createdAt: session.createdAt,
+            messageCount: session.messages.length
+        });
         return acc;
-    }, {} as Record<string, Array<{ index: number; text: string }>>);
+    }, {} as Record<string, Array<{ id: string; preview: string; createdAt: string; messageCount: number }>>);
 
     return (
         <div className="w-64 bg-surface-variant/30 rounded-2xl p-4 overflow-y-auto h-full">
-            <h3 className="text-lg font-semibold text-on-surface mb-4">Chat History</h3>
-            {Object.keys(groupedMessages).length === 0 ? (
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-on-surface">Chat History</h3>
+                <button
+                    onClick={onNewSession}
+                    className="px-2 py-1 text-xs bg-primary text-on-primary rounded-lg hover:opacity-90 transition-opacity"
+                    title="Start new session"
+                >
+                    + New
+                </button>
+            </div>
+            {Object.keys(groupedSessions).length === 0 ? (
                 <p className="text-sm text-on-surface-variant">No chat history yet</p>
             ) : (
                 <div className="space-y-4">
-                    {Object.entries(groupedMessages).map(([date, msgs]) => (
+                    {Object.entries(groupedSessions).map(([date, sessions]) => (
                         <div key={date}>
                             <p className="text-xs font-medium text-on-surface-variant mb-2">{date}</p>
                             <div className="space-y-2">
-                                {msgs.map((msg) => (
+                                {sessions.map((session) => (
                                     <button
-                                        key={msg.index}
-                                        onClick={() => onSelectMessage(msg.index)}
+                                        key={session.id}
+                                        onClick={() => onSelectSession(session.id)}
                                         className={`w-full text-left p-2 rounded-lg text-sm transition-colors ${
-                                            currentIndex === msg.index
+                                            currentSessionId === session.id
                                                 ? 'bg-primary-container text-on-primary-container'
                                                 : 'bg-surface-variant/50 text-on-surface-variant hover:bg-surface-variant'
                                         }`}
+                                        title={`${session.messageCount} messages`}
                                     >
-                                        {msg.text}
+                                        <div className="truncate">{session.preview}</div>
+                                        <div className="text-xs opacity-70 mt-1">
+                                            {new Date(session.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
                                     </button>
                                 ))}
                             </div>
@@ -134,61 +207,54 @@ const AIAssistant: React.FC = () => {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
-    const [selectedMessageIndex, setSelectedMessageIndex] = useState<number | null>(null);
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+    const [chatSessions, setChatSessions] = useState<Array<{ id: string; messages: ChatMessage[]; createdAt: string; updatedAt: string }>>([]);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Load chat history on mount
+    // Always start with a new session on mount (only once)
+    const [hasInitialized, setHasInitialized] = useState(false);
+    useEffect(() => {
+        // Only initialize once on mount
+        if (!hasInitialized && messages.length === 0) {
+            // Initialize with greeting for new session
+            if (userProfile?.name) {
+                setMessages([
+                    { 
+                        role: 'model', 
+                        text: `Hello ${userProfile.name}! 👋 I'm your FinAI assistant. I can help you analyze your expenses, track your spending, provide financial insights, and suggest healthy product alternatives for your family. What would you like to know?` 
+                    }
+                ]);
+            } else {
+                setMessages([
+                    { 
+                        role: 'model', 
+                        text: 'Hello! 👋 I\'m your FinAI assistant. I can help you analyze your expenses, track your spending, provide financial insights, and suggest healthy product alternatives for your family. What would you like to know?' 
+                    }
+                ]);
+            }
+            setCurrentSessionId(null); // New session, no ID yet
+            setHasInitialized(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
+
+    // Load chat history for sidebar
     useEffect(() => {
         const loadChatHistory = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                const chatData = await chatMessagesService.getChatMessages(user.id);
-                if (chatData && chatData.messages.length > 0) {
-                    setMessages(chatData.messages);
-                } else {
-                    // Initialize with greeting if no history
-                    if (userProfile?.name) {
-                        setMessages([
-                            { 
-                                role: 'model', 
-                                text: `Hello ${userProfile.name}! 👋 I'm your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?` 
-                            }
-                        ]);
-                    } else {
-                        setMessages([
-                            { 
-                                role: 'model', 
-                                text: 'Hello! 👋 I\'m your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?' 
-                            }
-                        ]);
-                    }
-                }
+                const sessions = await chatMessagesService.getAllChatSessions(user.id);
+                setChatSessions(sessions);
             } catch (error) {
                 console.error('Error loading chat history:', error);
-                // Initialize with greeting on error
-                if (userProfile?.name) {
-                    setMessages([
-                        { 
-                            role: 'model', 
-                            text: `Hello ${userProfile.name}! 👋 I'm your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?` 
-                        }
-                    ]);
-                } else {
-                    setMessages([
-                        { 
-                            role: 'model', 
-                            text: 'Hello! 👋 I\'m your FinAI assistant. I can help you analyze your expenses, track your spending, and provide financial insights. What would you like to know?' 
-                        }
-                    ]);
-                }
             }
         };
 
         loadChatHistory();
-    }, [userProfile]);
+    }, []);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -199,45 +265,131 @@ const AIAssistant: React.FC = () => {
         if (!input.trim() || loading) return;
 
         const userMessage: ChatMessage = { role: 'user', text: input.trim() };
-        setMessages(prev => [...prev, userMessage]);
         const userInput = input.trim();
         setInput('');
         setLoading(true);
 
+        // Add user message immediately to show it
+        setMessages(prev => {
+            const updated = [...prev, userMessage];
+            return updated;
+        });
+
         try {
-            const response = await getAssistantResponse(messages, expenses, incomes, userProfile, userInput);
-            const modelMessage: ChatMessage = { role: 'model', text: response };
-            const updatedMessages = [...messages, userMessage, modelMessage];
-            setMessages(updatedMessages);
+            // Get current messages including the user message for AI context
+            const currentMessages = [...messages, userMessage];
             
-            // Save chat history to Supabase
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    await chatMessagesService.saveChatMessages(user.id, updatedMessages);
+            // Check if the query is about healthy products
+            const healthyProductKeywords = ['salt', 'sugar', 'oil', 'flour', 'rice', 'healthy', 'alternative', 'better', 'nourish', 'nutritious', 'product', 'food'];
+            const isHealthyProductQuery = healthyProductKeywords.some(keyword => 
+                userInput.toLowerCase().includes(keyword)
+            );
+
+            let response: string;
+            if (isHealthyProductQuery) {
+                // Try to get healthy product suggestions from database first
+                try {
+                    const alternatives = await getHealthyAlternatives(userInput);
+                    if (alternatives.length > 0) {
+                        // Format the response with database suggestions
+                        let formattedResponse = `Here are some healthy alternatives I found:\n\n`;
+                        alternatives.forEach((alt, index) => {
+                            formattedResponse += `${index + 1}. **${alt.common_product}** → **${alt.healthy_alternative}**\n`;
+                            formattedResponse += `   Category: ${alt.category}\n`;
+                            formattedResponse += `   Health Benefits: ${alt.health_benefits}\n`;
+                            if (alt.nutritional_info) {
+                                formattedResponse += `   Nutritional Info: ${alt.nutritional_info}\n`;
+                            }
+                            formattedResponse += `   Availability: ${alt.availability}\n`;
+                            if (alt.price_range) {
+                                formattedResponse += `   Price Range: ${alt.price_range}\n`;
+                            }
+                            if (alt.brand_suggestions && alt.brand_suggestions.length > 0) {
+                                formattedResponse += `   Brand Suggestions: ${alt.brand_suggestions.join(', ')}\n`;
+                            }
+                            formattedResponse += `\n`;
+                        });
+                        formattedResponse += `\nThese products are available in Indian markets and are better for your family's health. Would you like more information about any specific product?`;
+                        response = formattedResponse;
+                    } else {
+                        // Fall back to AI response
+                        response = await getAssistantResponse(currentMessages, expenses, incomes, userProfile, userInput);
+                    }
+                } catch (dbError) {
+                    console.error('Error fetching healthy products:', dbError);
+                    // Fall back to AI response
+                    response = await getAssistantResponse(currentMessages, expenses, incomes, userProfile, userInput);
                 }
-            } catch (saveError) {
-                console.warn('Failed to save chat history:', saveError);
-                // Don't show error to user, just log it
+            } else {
+                // Regular financial query
+                response = await getAssistantResponse(currentMessages, expenses, incomes, userProfile, userInput);
             }
+
+            const modelMessage: ChatMessage = { role: 'model', text: response };
+            // Add model response to messages
+            setMessages(prev => {
+                const updated = [...prev, modelMessage];
+                
+                // Save chat history to Supabase
+                (async () => {
+                    try {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                            const savedSession = await chatMessagesService.saveChatMessages(
+                                user.id, 
+                                updated, 
+                                currentSessionId || undefined
+                            );
+                            // Update current session ID if it's a new session
+                            if (!currentSessionId && savedSession) {
+                                setCurrentSessionId(savedSession.id);
+                            }
+                            // Reload chat sessions for history sidebar
+                            const sessions = await chatMessagesService.getAllChatSessions(user.id);
+                            setChatSessions(sessions);
+                        }
+                    } catch (saveError) {
+                        console.warn('Failed to save chat history:', saveError);
+                        // Don't show error to user, just log it
+                    }
+                })();
+                
+                return updated;
+            });
         } catch (error) {
             console.error('Chat error:', error);
             const errorMessage: ChatMessage = { 
                 role: 'model', 
                 text: 'Sorry, I encountered an error while processing your request. Please try again or check your internet connection.' 
             };
-            const updatedMessages = [...messages, userMessage, errorMessage];
-            setMessages(updatedMessages);
-            
-            // Save chat history even on error
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    await chatMessagesService.saveChatMessages(user.id, updatedMessages);
-                }
-            } catch (saveError) {
-                console.warn('Failed to save chat history:', saveError);
-            }
+            // Add error message to messages (user message already added)
+            setMessages(prev => {
+                const updated = [...prev, errorMessage];
+                
+                // Save chat history even on error
+                (async () => {
+                    try {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                            const savedSession = await chatMessagesService.saveChatMessages(
+                                user.id, 
+                                updated, 
+                                currentSessionId || undefined
+                            );
+                            if (!currentSessionId && savedSession) {
+                                setCurrentSessionId(savedSession.id);
+                            }
+                            // Reload chat sessions for history sidebar
+                            const sessions = await chatMessagesService.getAllChatSessions(user.id);
+                            setChatSessions(sessions);
+                        }
+                    } catch (saveError) {
+                        console.warn('Failed to save chat history:', saveError);
+                    }
+                })();
+                
+                return updated;
+            });
         } finally {
             setLoading(false);
             inputRef.current?.focus();
@@ -251,13 +403,38 @@ const AIAssistant: React.FC = () => {
 
     const showQuickActions = messages.length === 1 && !loading;
 
-    const handleSelectMessage = (index: number) => {
-        setSelectedMessageIndex(index);
-        // Scroll to the selected message
-        const messageElement = document.getElementById(`message-${index}`);
-        if (messageElement) {
-            messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const handleSelectSession = async (sessionId: string) => {
+        try {
+            const session = await chatMessagesService.getChatSession(sessionId);
+            if (session) {
+                setMessages(session.messages);
+                setCurrentSessionId(session.id);
+                setShowHistory(false); // Close history sidebar on mobile
+            }
+        } catch (error) {
+            console.error('Error loading session:', error);
         }
+    };
+
+    const handleNewSession = () => {
+        // Initialize with greeting for new session
+        if (userProfile?.name) {
+            setMessages([
+                { 
+                    role: 'model', 
+                    text: `Hello ${userProfile.name}! 👋 I'm your FinAI assistant. I can help you analyze your expenses, track your spending, provide financial insights, and suggest healthy product alternatives for your family. What would you like to know?` 
+                }
+            ]);
+        } else {
+            setMessages([
+                { 
+                    role: 'model', 
+                    text: 'Hello! 👋 I\'m your FinAI assistant. I can help you analyze your expenses, track your spending, provide financial insights, and suggest healthy product alternatives for your family. What would you like to know?' 
+                }
+            ]);
+        }
+        setCurrentSessionId(null); // New session, no ID yet
+        setShowHistory(false); // Close history sidebar on mobile
     };
 
     return (
@@ -266,9 +443,10 @@ const AIAssistant: React.FC = () => {
             {showHistory && (
                 <div className="hidden lg:block flex-shrink-0">
                     <ChatHistorySidebar
-                        messages={messages}
-                        onSelectMessage={handleSelectMessage}
-                        currentIndex={selectedMessageIndex || -1}
+                        chatSessions={chatSessions}
+                        onSelectSession={handleSelectSession}
+                        currentSessionId={currentSessionId}
+                        onNewSession={handleNewSession}
                     />
                 </div>
             )}

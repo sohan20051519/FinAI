@@ -36,13 +36,13 @@ const Reports: React.FC = () => {
     }, [expenses]);
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto px-2 sm:px-4">
             <Header title="Spending Reports" subtitle="Visualize your financial habits for the current month." />
 
             <Card>
-                <h2 className="text-xl font-medium text-on-surface-variant mb-4">This Month's Spending by Category</h2>
+                <h2 className="text-lg sm:text-xl font-medium text-on-surface-variant mb-4">This Month's Spending by Category</h2>
                 {dataByCategory.length > 0 ? (
-                    <div style={{ width: '100%', height: 400 }}>
+                    <div style={{ width: '100%', height: '300px' }} className="sm:h-[400px]">
                         <ResponsiveContainer>
                             <PieChart>
                                 <Pie

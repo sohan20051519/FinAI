@@ -84,8 +84,8 @@ const Onboarding: React.FC = () => {
       case 1:
         return (
           <div>
-            <h2 className="text-2xl font-medium text-on-surface mb-2">Welcome to FinAI!</h2>
-            <p className="text-on-surface-variant mb-6">Let's get to know you a little.</p>
+            <h2 className="text-xl sm:text-2xl font-medium text-on-surface mb-2">Welcome to FinAI!</h2>
+            <p className="text-sm sm:text-base text-on-surface-variant mb-4 sm:mb-6">Let's get to know you a little.</p>
             <div className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-on-surface-variant mb-1">What's your name?</label>
@@ -102,8 +102,8 @@ const Onboarding: React.FC = () => {
       case 2:
         return (
           <div>
-            <h2 className="text-2xl font-medium text-on-surface mb-2">Financial Details</h2>
-            <p className="text-on-surface-variant mb-6">This will help us create your budget.</p>
+            <h2 className="text-xl sm:text-2xl font-medium text-on-surface mb-2">Financial Details</h2>
+            <p className="text-sm sm:text-base text-on-surface-variant mb-4 sm:mb-6">This will help us create your budget.</p>
             <div className="space-y-4">
                 <div>
                     <label htmlFor="monthlyIncome" className="block text-sm font-medium text-on-surface-variant mb-1">What's your total fixed monthly income? (₹)</label>
@@ -123,8 +123,8 @@ const Onboarding: React.FC = () => {
       case 3:
         return (
             <div>
-              <h2 className="text-2xl font-medium text-on-surface mb-2">Fixed Monthly Expenses</h2>
-              <p className="text-on-surface-variant mb-6">Add recurring costs like rent, EMIs, or subscriptions.</p>
+              <h2 className="text-xl sm:text-2xl font-medium text-on-surface mb-2">Fixed Monthly Expenses</h2>
+              <p className="text-sm sm:text-base text-on-surface-variant mb-4 sm:mb-6">Add recurring costs like rent, EMIs, or subscriptions.</p>
               <div className="space-y-2 mb-4">
                   {fixedExpenses.map(exp => (
                       <div key={exp.id} className="flex items-center justify-between bg-surface-variant/50 p-2 rounded-lg text-on-surface">
@@ -168,7 +168,7 @@ const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-md">
         <Card>
             {renderStep()}

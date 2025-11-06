@@ -8,6 +8,8 @@ import Spinner from '../ui/Spinner';
 import { supabase } from '../../lib/supabase';
 import { groceryListsService } from '../../services/supabaseService';
 import { ArrowDownTrayIcon, TrashIcon } from '../icons/Icons';
+import { familyService } from '../../services/familyService';
+import { familyChatService } from '../../services/familyChatService';
 
 interface GroceryCartTabProps {
   groceryList: GroceryItem[];
@@ -39,11 +41,48 @@ const GroceryCartTab: React.FC<GroceryCartTabProps> = ({ groceryList, onGroceryL
   const [saveName, setSaveName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [currentList, setCurrentList] = useState<GroceryItem[]>(groceryList);
+  const [showFamilyShareModal, setShowFamilyShareModal] = useState(false);
+  const [familyGroups, setFamilyGroups] = useState<Array<{ id: string; name: string; created_by: string }>>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     setCurrentList(groceryList);
     loadSavedLists();
+    loadFamilyGroups();
   }, [groceryList]);
+
+  const loadFamilyGroups = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const groups = await familyService.getUserFamilyGroups(user.id);
+      setFamilyGroups(groups);
+    } catch (error) {
+      console.error('Error loading family groups:', error);
+    }
+  };
+
+  const handleShareWithFamily = async () => {
+    if (!selectedGroupId || currentList.length === 0) return;
+    
+    setSharing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      await familyChatService.shareGroceryList(selectedGroupId, user.id, currentList);
+      setShowFamilyShareModal(false);
+      setSelectedGroupId(null);
+      alert('Grocery list shared successfully with family group!');
+    } catch (err: any) {
+      console.error('Error sharing grocery list:', err);
+      alert(err.message || 'Failed to share grocery list');
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const loadSavedLists = async () => {
     try {
@@ -232,9 +271,9 @@ const GroceryCartTab: React.FC<GroceryCartTabProps> = ({ groceryList, onGroceryL
         </Card>
       ) : (
         <Card>
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-            <h2 className="text-2xl font-medium text-on-surface-variant">Your Grocery List</h2>
-            <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap justify-between items-center gap-3 sm:gap-4 mb-4">
+            <h2 className="text-xl sm:text-2xl font-medium text-on-surface-variant">Your Grocery List</h2>
+            <div className="flex gap-2 flex-wrap text-xs sm:text-sm">
               {showSaveDialog ? (
                 <div className="flex gap-2 items-center">
                   <input
@@ -301,8 +340,11 @@ const GroceryCartTab: React.FC<GroceryCartTabProps> = ({ groceryList, onGroceryL
                   </Button>
                   <Button 
                     onClick={() => {
-                      // TODO: Implement family sharing feature
-                      alert('Family sharing feature coming soon! Share your grocery list with family members (parents can edit, kids can view).');
+                      if (familyGroups.length === 0) {
+                        alert('You need to create or join a family group first. Go to the Family Groups page to get started.');
+                        return;
+                      }
+                      setShowFamilyShareModal(true);
                     }}
                     className="text-sm"
                   >
@@ -313,15 +355,15 @@ const GroceryCartTab: React.FC<GroceryCartTabProps> = ({ groceryList, onGroceryL
             </div>
           </div>
           <p className="text-xs text-on-surface-variant mb-4 bg-primary-container/30 p-2 rounded-lg">
-            💡 <strong>Family Collaboration:</strong> Share this list with family members. Parents can edit, kids can view. Coming soon!
+            💡 <strong>Family Collaboration:</strong> Share this list with family members. Parents can edit, kids can view.
           </p>
           <ul className="divide-y divide-outline/20">
             {currentList.map((item) => (
           <li key={item.item} className="py-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="flex-1">
-                <p className="font-medium text-on-surface">{item.item}</p>
-                <p className="text-sm text-on-surface-variant">Quantity: {item.quantity}</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm sm:text-base text-on-surface truncate">{item.item}</p>
+                <p className="text-xs sm:text-sm text-on-surface-variant">Quantity: {item.quantity}</p>
               </div>
               <Button onClick={() => handleFindOnline(item)} disabled={searchState[item.item]?.loading} className="w-full sm:w-auto">
                 {searchState[item.item]?.loading ? <Spinner /> : 'Find Online'}
@@ -361,6 +403,73 @@ const GroceryCartTab: React.FC<GroceryCartTabProps> = ({ groceryList, onGroceryL
           ))}
         </ul>
       </Card>
+      )}
+
+      {/* Family Share Modal */}
+      {showFamilyShareModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowFamilyShareModal(false)}></div>
+          <Card className="relative w-full max-w-md !bg-white !opacity-100 shadow-2xl border-2 border-outline/20 z-10" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-outline/30">
+              <h2 className="text-xl sm:text-2xl font-semibold text-on-surface">👨‍👩‍👧‍👦 Share with Family</h2>
+              <button
+                onClick={() => setShowFamilyShareModal(false)}
+                className="p-2 hover:bg-surface-variant/30 rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <span className="text-2xl text-on-surface-variant">×</span>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-on-surface-variant mb-2">
+                Select Family Group
+              </label>
+              {familyGroups.length === 0 ? (
+                <p className="text-sm text-on-surface-variant">No family groups available. Create or join a group first.</p>
+              ) : (
+                <select
+                  value={selectedGroupId || ''}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  className="w-full bg-surface-variant/50 p-3 rounded-lg border border-outline/30 text-on-surface"
+                >
+                  <option value="">Select a family group...</option>
+                  {familyGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => {
+                  setShowFamilyShareModal(false);
+                  setSelectedGroupId(null);
+                }}
+                className="!bg-secondary-container !text-on-secondary-container"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleShareWithFamily}
+                disabled={!selectedGroupId || sharing || currentList.length === 0}
+                className="flex items-center gap-2"
+              >
+                {sharing ? (
+                  <>
+                    <Spinner />
+                    Sharing...
+                  </>
+                ) : (
+                  'Share List'
+                )}
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

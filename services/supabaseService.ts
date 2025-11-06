@@ -401,18 +401,39 @@ export const mealPlansService = {
 
 // Chat Messages Operations
 export const chatMessagesService = {
-  // Get chat messages for a user (there's only one chat per user)
-  async getChatMessages(userId: string) {
+  // Get all chat sessions for a user (for history)
+  async getAllChatSessions(userId: string) {
     const { data, error } = await supabase
       .from('chat_messages')
       .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching chat sessions:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) return [];
+
+    return data.map(item => ({
+      id: item.id,
+      messages: item.messages as ChatMessage[],
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+  },
+
+  // Get a specific chat session by ID
+  async getChatSession(sessionId: string) {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('id', sessionId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error fetching chat messages:', error);
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching chat session:', error);
       return null;
     }
 
@@ -426,26 +447,20 @@ export const chatMessagesService = {
     };
   },
 
-  // Save chat messages (upsert - one chat per user)
-  async saveChatMessages(userId: string, messages: ChatMessage[]) {
-    const { data: existing } = await supabase
-      .from('chat_messages')
-      .select('id')
-      .eq('user_id', userId)
-      .single();
-
+  // Save chat messages (always creates a new session)
+  async saveChatMessages(userId: string, messages: ChatMessage[], sessionId?: string) {
     const chatData: any = {
       user_id: userId,
       messages: messages,
       updated_at: new Date().toISOString(),
     };
 
-    if (existing) {
-      // Update existing chat
+    if (sessionId) {
+      // Update existing session
       const { data, error } = await supabase
         .from('chat_messages')
         .update(chatData)
-        .eq('id', existing.id)
+        .eq('id', sessionId)
         .eq('user_id', userId)
         .select()
         .single();
@@ -462,7 +477,7 @@ export const chatMessagesService = {
         updatedAt: data.updated_at,
       };
     } else {
-      // Create new chat
+      // Create new session
       const { data, error } = await supabase
         .from('chat_messages')
         .insert(chatData)
@@ -483,8 +498,22 @@ export const chatMessagesService = {
     }
   },
 
-  // Delete chat messages
-  async deleteChatMessages(userId: string) {
+  // Delete a specific chat session
+  async deleteChatSession(sessionId: string, userId: string) {
+    const { error } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('id', sessionId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting chat session:', error);
+      throw error;
+    }
+  },
+
+  // Delete all chat sessions for a user
+  async deleteAllChatSessions(userId: string) {
     const { error } = await supabase
       .from('chat_messages')
       .delete()

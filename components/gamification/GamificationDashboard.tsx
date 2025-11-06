@@ -48,14 +48,14 @@ const GamificationDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-4">
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-outline/30">
+      <div className="flex gap-1 sm:gap-2 border-b border-outline/30 overflow-x-auto">
         {(['overview', 'badges', 'challenges', 'leaderboard'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+            className={`px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
               activeTab === tab
                 ? 'border-primary text-primary'
                 : 'border-transparent text-on-surface-variant hover:text-on-surface'
@@ -68,19 +68,19 @@ const GamificationDashboard: React.FC = () => {
 
       {/* Content */}
       {activeTab === 'overview' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Score Card */}
           {score && (
             <Card>
-              <div className="p-6">
-                <div className="flex items-center justify-between">
+              <div className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <p className="text-sm text-on-surface-variant mb-1">Your Level</p>
-                    <h2 className="text-3xl font-bold text-on-surface">Level {score.level}</h2>
+                    <p className="text-xs sm:text-sm text-on-surface-variant mb-1">Your Level</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-on-surface">Level {score.level}</h2>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-on-surface-variant mb-1">Total Points</p>
-                    <h2 className="text-3xl font-bold text-primary">{score.total_points.toLocaleString()}</h2>
+                  <div className="text-left sm:text-right">
+                    <p className="text-xs sm:text-sm text-on-surface-variant mb-1">Total Points</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-primary">{score.total_points.toLocaleString()}</h2>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -105,9 +105,9 @@ const GamificationDashboard: React.FC = () => {
           {/* Recent Badges */}
           {badges.length > 0 && (
             <Card>
-              <div className="p-4">
-                <h3 className="text-lg font-bold text-on-surface mb-4">Recent Badges</h3>
-                <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 sm:p-4">
+                <h3 className="text-base sm:text-lg font-bold text-on-surface mb-3 sm:mb-4">Recent Badges</h3>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {badges.slice(0, 3).map((badge) => (
                     <div
                       key={badge.id}

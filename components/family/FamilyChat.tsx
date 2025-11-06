@@ -446,8 +446,8 @@ const FamilyChat: React.FC = () => {
       await familyJoinRequestService.createJoinRequest(joinCode.trim(), userId);
       // Keep modal open so user can see the success message
       setJoinCode('');
-      setSuccess('Join request sent! Waiting for admin approval.');
-      setTimeout(() => setSuccess(null), 5000);
+      setSuccess('Request sent!');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to join family group');
     } finally {
@@ -831,16 +831,16 @@ const FamilyChat: React.FC = () => {
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
-    <div className="w-full h-full flex bg-surface overflow-hidden">
+    <div className="w-full h-full flex flex-col md:flex-row bg-surface overflow-hidden">
       {/* Left Sidebar - Chat List */}
-      <div className="w-80 md:w-96 border-r border-outline/20 bg-surface flex flex-col flex-shrink-0 min-h-0">
+      <div className={`${currentGroup ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 border-r border-outline/20 bg-surface flex-col flex-shrink-0 min-h-0`}>
         {/* Top Header */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-outline/20 bg-surface flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center">
-              <span className="text-on-primary-container font-semibold text-sm">👨‍👩‍👧‍👦</span>
+        <div className="h-14 sm:h-16 px-3 sm:px-4 flex items-center justify-between border-b border-outline/20 bg-surface flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary-container flex items-center justify-center">
+              <span className="text-on-primary-container font-semibold text-xs sm:text-sm">👨‍👩‍👧‍👦</span>
             </div>
-            <h1 className="text-lg font-semibold text-on-surface">Family Groups</h1>
+            <h1 className="text-base sm:text-lg font-semibold text-on-surface">Family Groups</h1>
           </div>
           <button className="p-2 hover:bg-surface-variant/30 rounded-full transition-colors">
             <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -850,17 +850,17 @@ const FamilyChat: React.FC = () => {
         </div>
 
         {/* Create/Join Buttons */}
-        <div className="px-4 py-3 border-b border-outline/20 bg-surface-variant/20 flex-shrink-0">
+        <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-outline/20 bg-surface-variant/20 flex-shrink-0">
           <div className="flex gap-2">
             <button
               onClick={() => setShowCreate(true)}
-              className="flex-1 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary text-on-primary rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity"
             >
               + Create Group
             </button>
             <button
               onClick={() => setShowJoin(true)}
-              className="flex-1 px-4 py-2 bg-surface-variant text-on-surface-variant rounded-lg text-sm font-medium hover:bg-surface-variant/80 transition-colors"
+              className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface-variant text-on-surface-variant rounded-lg text-xs sm:text-sm font-medium hover:bg-surface-variant/80 transition-colors"
             >
               Join Group
             </button>
@@ -869,8 +869,8 @@ const FamilyChat: React.FC = () => {
 
         {/* Groups List */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="px-4 py-2">
-            <div className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Your Groups</div>
+          <div className="px-3 sm:px-4 py-2">
+            <div className="text-[10px] sm:text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Your Groups</div>
             {loading && familyGroups.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <Spinner />
@@ -892,8 +892,8 @@ const FamilyChat: React.FC = () => {
                         isActive ? 'bg-primary-container/30' : 'hover:bg-surface-variant/30'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 relative ${
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 relative ${
                           isActive ? 'bg-primary' : 'bg-surface-variant'
                         }`}>
                           <span className={`font-semibold text-sm ${
@@ -908,24 +908,24 @@ const FamilyChat: React.FC = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h3 className={`text-sm font-medium truncate ${
+                          <div className="flex items-center justify-between mb-0.5 sm:mb-1 gap-2">
+                            <h3 className={`text-xs sm:text-sm font-medium truncate ${
                               isActive ? 'text-on-surface' : 'text-on-surface'
                             }`}>
                               {group.name}
                             </h3>
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                               {!isActive && unreadCount > 0 && (
-                                <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-error text-on-error text-xs font-bold rounded-full">
+                                <span className="min-w-[18px] h-4.5 sm:min-w-[20px] sm:h-5 px-1 sm:px-1.5 flex items-center justify-center bg-error text-on-error text-[10px] sm:text-xs font-bold rounded-full">
                                   {unreadCount > 99 ? '99+' : unreadCount}
                                 </span>
                               )}
-                              <span className="text-xs text-on-surface-variant">
+                              <span className="text-[10px] sm:text-xs text-on-surface-variant">
                                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                           </div>
-                          <p className="text-xs text-on-surface-variant truncate">{getLastMessage(group)}</p>
+                          <p className="text-[10px] sm:text-xs text-on-surface-variant truncate">{getLastMessage(group)}</p>
                         </div>
                       </div>
                     </div>
@@ -938,20 +938,30 @@ const FamilyChat: React.FC = () => {
       </div>
 
       {/* Right Chat Area */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface w-full">
         {currentGroup ? (
           <>
             {/* Chat Header */}
-            <div className="h-16 px-4 md:px-6 flex items-center justify-between bg-surface border-b border-outline/20 flex-shrink-0">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                  <span className="text-on-primary font-semibold text-base">
+            <div className="h-14 sm:h-16 px-3 sm:px-4 md:px-6 flex items-center justify-between bg-surface border-b border-outline/20 flex-shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                {/* Back button for mobile */}
+                <button
+                  onClick={() => setCurrentGroup(null)}
+                  className="md:hidden p-2 hover:bg-surface-variant/30 rounded-full transition-colors flex-shrink-0"
+                  aria-label="Back to groups"
+                >
+                  <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm sm:text-base font-semibold text-on-primary">
                     {getGroupInitial(currentGroup.name)}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-semibold text-on-surface truncate">{currentGroup.name}</h2>
-                  <p className="text-xs text-on-surface-variant">Online • {members.length} members</p>
+                  <h2 className="text-sm sm:text-base font-semibold text-on-surface truncate">{currentGroup.name}</h2>
+                  <p className="text-[10px] sm:text-xs text-on-surface-variant">Online • {members.length} members</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -1076,7 +1086,7 @@ const FamilyChat: React.FC = () => {
             {/* Messages Area */}
             <div 
               ref={chatContainerRef} 
-              className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 min-h-0"
+              className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4 min-h-0"
               style={{ scrollBehavior: 'smooth' }}
             >
               {Object.keys(groupedMessages).length === 0 ? (
@@ -1103,7 +1113,7 @@ const FamilyChat: React.FC = () => {
                           key={msg.id}
                           className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2`}
                         >
-                          <div className={`max-w-[75%] md:max-w-[60%] rounded-2xl px-4 py-2 ${
+                          <div className={`max-w-[85%] sm:max-w-[75%] md:max-w-[60%] rounded-2xl px-3 sm:px-4 py-2 ${
                             isOwnMessage 
                               ? 'bg-primary text-on-primary rounded-tr-sm' 
                               : 'bg-surface-variant text-on-surface rounded-tl-sm'
@@ -1223,7 +1233,7 @@ const FamilyChat: React.FC = () => {
             </div>
 
             {/* Chat Input Area */}
-            <div className="px-4 md:px-6 py-3 bg-surface border-t border-outline/20 flex-shrink-0">
+            <div className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 bg-surface border-t border-outline/20 flex-shrink-0">
               {error && !error.toLowerCase().includes('bucket') && (
                 <div className="mb-3 p-3 bg-error-container border border-error rounded-lg flex items-start justify-between gap-2">
                   <p className="text-sm text-on-error-container flex-1 break-words">{error}</p>
@@ -1284,7 +1294,7 @@ const FamilyChat: React.FC = () => {
                   className="hidden"
                 />
                 {/* Message Input */}
-                <div className="flex-1 bg-surface-variant/50 rounded-full px-4 py-2.5 border border-transparent focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                <div className="flex-1 bg-surface-variant/50 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 border border-transparent focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                   <input
                     type="text"
                     value={messageText}
@@ -1296,7 +1306,7 @@ const FamilyChat: React.FC = () => {
                       }
                     }}
                     placeholder={`Write a message for ${currentGroup.name}...`}
-                    className="w-full bg-transparent text-on-surface text-sm md:text-base placeholder:text-on-surface-variant focus:outline-none"
+                    className="w-full bg-transparent text-on-surface text-xs sm:text-sm md:text-base placeholder:text-on-surface-variant focus:outline-none"
                     disabled={isSending}
                   />
                 </div>

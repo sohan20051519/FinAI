@@ -453,7 +453,7 @@ const AppContent: React.FC = () => {
           {renderView()}
         </div>
       </main>
-      {!isFamilyView && <BottomNav currentView={currentView} setCurrentView={setCurrentView} />}
+      <BottomNav currentView={currentView} setCurrentView={setCurrentView} />
     </div>
   );
 };

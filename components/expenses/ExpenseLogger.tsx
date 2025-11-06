@@ -10,8 +10,8 @@ import { supabase } from '../../lib/supabase';
 import { expensesService, incomesService } from '../../services/supabaseService';
 
 const Header: React.FC<{ title: string }> = ({ title }) => (
-    <header className="mb-8">
-        <h1 className="text-4xl font-normal text-on-surface">{title}</h1>
+    <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-normal text-on-surface">{title}</h1>
     </header>
 );
 
@@ -72,7 +72,7 @@ const ExpenseForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <input
           type="number"
           value={amount}
@@ -312,8 +312,8 @@ const TransactionList: React.FC = () => {
     }
 
     return (
-        <Card className="mt-8">
-            <h2 className="text-xl font-medium text-on-surface-variant mb-4">Transaction History</h2>
+        <Card className="mt-6 sm:mt-8">
+            <h2 className="text-lg sm:text-xl font-medium text-on-surface-variant mb-4">Transaction History</h2>
             
             {error && (
                 <div className="bg-error-container border border-error rounded-lg p-2 sm:p-2.5 mb-4">
@@ -321,7 +321,7 @@ const TransactionList: React.FC = () => {
                 </div>
             )}
             
-            <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
                 <div className="flex-1">
                     <label htmlFor="filterCategory" className="block text-sm font-medium text-on-surface-variant mb-1">Filter by Expense Category</label>
                     <select
@@ -352,19 +352,19 @@ const TransactionList: React.FC = () => {
 
             <ul className="divide-y divide-outline/20">
                 {displayedTransactions.length > 0 ? displayedTransactions.map(t => (
-                    <li key={`${t.type}-${t.id}`} className="flex justify-between items-center py-4 gap-2">
+                    <li key={`${t.type}-${t.id}`} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 py-3 sm:py-4">
                         <div className="flex-1 min-w-0">
-                            <p className="font-medium text-on-surface truncate flex items-center" title={t.description}>
+                            <p className="font-medium text-sm sm:text-base text-on-surface truncate flex items-center flex-wrap gap-1" title={t.description}>
                                 {t.description}
-                                {t.recurring && <span className="ml-2 text-xs font-semibold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full">Monthly</span>}
+                                {t.recurring && <span className="text-xs font-semibold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full">Monthly</span>}
                             </p>
-                            <p className="text-sm text-on-surface-variant">
+                            <p className="text-xs sm:text-sm text-on-surface-variant">
                                 {t.type === 'expense' ? `${t.category} · ` : 'Income · '}
                                 {new Date(t.date).toLocaleDateString()}
                             </p>
                         </div>
-                        <div className="flex items-center gap-4 flex-shrink-0">
-                            <p className={`font-medium text-right w-28 ${t.type === 'expense' ? 'text-error' : 'text-tertiary'}`}>
+                        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+                            <p className={`font-medium text-sm sm:text-base text-right min-w-[100px] sm:w-28 ${t.type === 'expense' ? 'text-error' : 'text-tertiary'}`}>
                                 {t.type === 'expense' ? '-' : '+'}₹{t.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                             <button 
@@ -373,12 +373,12 @@ const TransactionList: React.FC = () => {
                                 className="text-on-surface-variant hover:text-error transition-colors p-1 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" 
                                 aria-label={`Delete transaction: ${t.description}`}
                             >
-                                <TrashIcon className="h-5 w-5" />
+                                <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                             </button>
                         </div>
                     </li>
                 )) : (
-                    <p className="text-center text-on-surface-variant py-8">{getEmptyStateMessage()}</p>
+                    <p className="text-center text-sm sm:text-base text-on-surface-variant py-8">{getEmptyStateMessage()}</p>
                 )}
             </ul>
         </Card>
@@ -389,19 +389,19 @@ const TransactionLogger: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto px-2 sm:px-4">
       <Header title="Log Transactions" />
       <Card>
         <div className="flex border-b border-outline/30 mb-4">
             <button 
                 onClick={() => setActiveTab('expense')} 
-                className={`flex-1 py-2 text-center font-medium ${activeTab === 'expense' ? 'border-b-2 border-primary text-primary' : 'text-on-surface-variant'}`}
+                className={`flex-1 py-2 text-center text-sm sm:text-base font-medium ${activeTab === 'expense' ? 'border-b-2 border-primary text-primary' : 'text-on-surface-variant'}`}
             >
                 Log Expense
             </button>
             <button 
                 onClick={() => setActiveTab('income')}
-                className={`flex-1 py-2 text-center font-medium ${activeTab === 'income' ? 'border-b-2 border-primary text-primary' : 'text-on-surface-variant'}`}
+                className={`flex-1 py-2 text-center text-sm sm:text-base font-medium ${activeTab === 'income' ? 'border-b-2 border-primary text-primary' : 'text-on-surface-variant'}`}
             >
                 Log Income
             </button>

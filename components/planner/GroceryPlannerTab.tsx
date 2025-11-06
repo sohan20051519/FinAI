@@ -156,10 +156,10 @@ const PlanDisplay: React.FC<{
     };
 
     return (
-        <div className="mt-8">
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                <h2 className="text-2xl font-medium text-on-surface-variant">Meal Plan & Grocery List</h2>
-                <div className="flex gap-2 flex-wrap">
+        <div className="mt-6 sm:mt-8">
+            <div className="flex flex-wrap justify-between items-center gap-3 sm:gap-4 mb-4">
+                <h2 className="text-xl sm:text-2xl font-medium text-on-surface-variant">Meal Plan & Grocery List</h2>
+                <div className="flex gap-2 flex-wrap text-xs sm:text-sm">
                     {onSave && (
                         <>
                             {showSaveDialog ? (
