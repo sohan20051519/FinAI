@@ -93,8 +93,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleSignUp, onSwitchToSig
       <div className="w-full max-w-md flex flex-col h-full justify-center">
         {/* Logo/Brand */}
         <div className="text-center mb-3 sm:mb-4 flex-shrink-0">
-          <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-container mb-1.5 sm:mb-2">
-            <span className="text-lg sm:text-xl font-bold text-primary">FinAI</span>
+          <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-container mb-1.5 sm:mb-2 overflow-hidden">
+            <img src="https://i.postimg.cc/635TGSyP/Chat-GPT-Image-Nov-8-2025-01-03-40-AM.png" alt="FinAI logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
           </div>
           <h1 className="text-lg sm:text-xl font-bold text-on-background mb-0.5 sm:mb-1">Create Account</h1>
           <p className="text-[10px] sm:text-xs text-on-surface-variant">Sign up to get started</p>

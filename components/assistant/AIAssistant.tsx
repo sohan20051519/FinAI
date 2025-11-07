@@ -456,8 +456,8 @@ const AIAssistant: React.FC = () => {
                 {/* Header */}
                 <div className="mb-4 sm:mb-6 flex-shrink-0 flex items-center justify-between">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-container flex items-center justify-center">
-                            <SparklesIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+                            <img src="https://i.postimg.cc/635TGSyP/Chat-GPT-Image-Nov-8-2025-01-03-40-AM.png" alt="FinAI logo" className="h-8 w-8 sm:h-10 sm:w-10 object-contain" />
                         </div>
                         <div>
                             <h1 className="text-xl sm:text-2xl font-bold text-on-background">FinAI Assistant</h1>

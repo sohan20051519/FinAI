@@ -83,8 +83,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
     <aside className="hidden md:flex flex-col w-64 bg-surface-variant/30 p-4 space-y-2">
       {/* Logo/Brand */}
       <div className="flex items-center gap-3 mb-6 px-2">
-        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary-container">
-          <span className="text-sm font-bold text-primary">FinAI</span>
+        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary-container overflow-hidden">
+          <img src="https://i.postimg.cc/635TGSyP/Chat-GPT-Image-Nov-8-2025-01-03-40-AM.png" alt="FinAI logo" className="w-12 h-12" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-on-background">FinAI</h2>
