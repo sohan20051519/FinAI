@@ -72,6 +72,37 @@ const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
                                 />
                             );
                         }))}
+                        {message.alternatives && (
+                            <div className="mt-4">
+                                {message.alternatives.map((alt, index) => (
+                                    <div key={index} className="mb-4">
+                                        <p>
+                                            <strong>{alt.common_product}</strong> → <strong>{alt.healthy_alternative}</strong>
+                                        </p>
+                                        <p>Category: {alt.category}</p>
+                                        <p>Health Benefits: {alt.health_benefits}</p>
+                                        {alt.prices && alt.prices.length > 0 && (
+                                            <div>
+                                                <p>Price Comparison:</p>
+                                                <div className="flex gap-4">
+                                                    {alt.prices.map((price, i) => (
+                                                        <a
+                                                            key={i}
+                                                            href={price.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="buy-now-button"
+                                                        >
+                                                            {price.store}: ${price.price.toFixed(2)}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <span className={`text-xs text-on-surface-variant mt-1 px-2 ${isUser ? 'text-right' : 'text-left'}`}>
@@ -317,21 +348,27 @@ const AIAssistant: React.FC = () => {
                         });
                         formattedResponse += `\nThese products are available in Indian markets and are better for your family's health. Would you like more information about any specific product?`;
                         response = formattedResponse;
+                        const modelMessage: ChatMessage = { role: 'model', text: response, alternatives };
+                        setMessages(prev => [...prev, modelMessage]);
                     } else {
                         // Fall back to AI response
                         response = await getAssistantResponse(currentMessages, expenses, incomes, userProfile, userInput);
+                        const modelMessage: ChatMessage = { role: 'model', text: response };
+                        setMessages(prev => [...prev, modelMessage]);
                     }
                 } catch (dbError) {
                     console.error('Error fetching healthy products:', dbError);
                     // Fall back to AI response
                     response = await getAssistantResponse(currentMessages, expenses, incomes, userProfile, userInput);
+                    const modelMessage: ChatMessage = { role: 'model', text: response };
+                    setMessages(prev => [...prev, modelMessage]);
                 }
             } else {
                 // Regular financial query
                 response = await getAssistantResponse(currentMessages, expenses, incomes, userProfile, userInput);
+                const modelMessage: ChatMessage = { role: 'model', text: response };
+                setMessages(prev => [...prev, modelMessage]);
             }
-
-            const modelMessage: ChatMessage = { role: 'model', text: response };
             // Add model response to messages
             setMessages(prev => {
                 const updated = [...prev, modelMessage];

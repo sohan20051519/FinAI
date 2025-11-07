@@ -34,9 +34,12 @@ export interface MealPlan {
   groceryList: GroceryItem[];
 }
 
+import { HealthyProductSuggestion } from './services/healthyProductsService';
+
 export interface ChatMessage {
     role: 'user' | 'model';
     text: string;
+    alternatives?: HealthyProductSuggestion[];
 }
 
 export interface FixedExpense {

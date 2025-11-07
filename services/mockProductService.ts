@@ -63,6 +63,9 @@ export const mockProductPrices: ProductPrice[] = [
 ];
 
 export const getMockProductPrices = (productName: string): ProductPrice[] => {
+  if (!productName) {
+    return [];
+  }
   return mockProductPrices.filter(
     (p) => p.productName.toLowerCase() === productName.toLowerCase()
   );
