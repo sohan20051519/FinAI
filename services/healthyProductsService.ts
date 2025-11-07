@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getMockProductPrices, ProductPrice } from './mockProductService';
 
 export interface HealthyProduct {
   id: string;
@@ -14,6 +15,7 @@ export interface HealthyProduct {
 }
 
 export interface HealthyProductSuggestion {
+  prices?: ProductPrice[];
   common_product: string;
   healthy_alternative: string;
   category: string;
@@ -36,7 +38,14 @@ export async function getHealthyAlternatives(searchProduct: string): Promise<Hea
       throw error;
     }
 
-    return data || [];
+    if (data) {
+      return data.map((product) => ({
+        ...product,
+        prices: getMockProductPrices(product.healthy_alternative),
+      }));
+    }
+
+    return [];
   } catch (err: any) {
     console.error('Error in getHealthyAlternatives:', err);
     // Fallback: search directly in the table
@@ -51,7 +60,14 @@ export async function getHealthyAlternatives(searchProduct: string): Promise<Hea
       return [];
     }
 
-    return data || [];
+    if (data) {
+      return data.map((product) => ({
+        ...product,
+        prices: getMockProductPrices(product.healthy_alternative),
+      }));
+    }
+
+    return [];
   }
 }
 

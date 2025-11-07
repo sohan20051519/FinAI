@@ -307,6 +307,12 @@ const AIAssistant: React.FC = () => {
                             if (alt.brand_suggestions && alt.brand_suggestions.length > 0) {
                                 formattedResponse += `   Brand Suggestions: ${alt.brand_suggestions.join(', ')}\n`;
                             }
+                            if (alt.prices && alt.prices.length > 0) {
+                                formattedResponse += `   Price Comparison:\n`;
+                                alt.prices.forEach((price) => {
+                                    formattedResponse += `      - ${price.store}: $${price.price.toFixed(2)} <a href="${price.url}" target="_blank" rel="noopener noreferrer" class="buy-now-button">Buy Now</a>\n`;
+                                });
+                            }
                             formattedResponse += `\n`;
                         });
                         formattedResponse += `\nThese products are available in Indian markets and are better for your family's health. Would you like more information about any specific product?`;
