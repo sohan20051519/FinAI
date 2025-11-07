@@ -3,6 +3,7 @@ import React from 'react';
 import Card from '../ui/Card';
 import { useAppState } from '../../context/AppContext';
 import { Expense, Income } from '../../types';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell as RechartsCell } from 'recharts';
 
 const Header: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle }) => (
     <header className="mb-6 sm:mb-8">
@@ -387,38 +388,86 @@ export default function Dashboard() {
                 <SummaryCard title="Remaining This Month" value={formatCurrency(remainingBalance)} color={remainingBalance >= 0 ? "text-on-surface" : "text-error"} />
             </div>
 
-            {/* Income vs Expense Comparison */}
+            {/* Income vs Expense Chart */}
             {totalIncome > 0 && (
                 <Card className="mb-6">
                     <h3 className="text-lg font-semibold text-on-surface mb-4">Income vs Expense</h3>
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                            <span className="text-on-surface-variant">Income</span>
-                            <span className="text-tertiary font-medium">{formatCurrency(totalIncome)}</span>
+                    <div className="h-40">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                                data={[
+                                    { name: 'Income', amount: totalIncome, fill: '#10b981' },
+                                    { name: 'Expenses', amount: totalSpent, fill: '#ef4444' },
+                                    { name: 'Balance', amount: Math.max(0, remainingBalance), fill: '#3b82f6' }
+                                ]}
+                                margin={{ top: 10, right: 20, left: 10, bottom: 5 }}
+                                barCategoryGap="20%"
+                            >
+                                <CartesianGrid strokeDasharray="2 2" stroke="#f3f4f6" />
+                                <XAxis 
+                                    dataKey="name" 
+                                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                                    axisLine={{ stroke: '#e5e7eb' }}
+                                />
+                                <YAxis 
+                                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                                    axisLine={{ stroke: '#e5e7eb' }}
+                                    tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                                />
+                                <Tooltip 
+                                    formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                                    labelStyle={{ color: '#374151', fontSize: '12px' }}
+                                    contentStyle={{ 
+                                        backgroundColor: '#ffffff', 
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: '4px',
+                                        padding: '8px',
+                                        fontSize: '12px',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                    }}
+                                    cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                                />
+                                <Bar 
+                                    dataKey="amount" 
+                                    radius={[2, 2, 0, 0]}
+                                    maxBarSize={60}
+                                >
+                                    {[
+                                        { fill: '#10b981' },
+                                        { fill: '#ef4444' },
+                                        { fill: '#3b82f6' }
+                                    ].map((entry, index) => (
+                                        <RechartsCell key={`cell-${index}`} fill={entry.fill} stroke="none" />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+                        <div>
+                            <div className="text-xs text-on-surface-variant">Income</div>
+                            <div className="text-base font-semibold text-tertiary">{formatCurrency(totalIncome)}</div>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-on-surface-variant">Expenses</span>
-                            <span className="text-error font-medium">{formatCurrency(totalSpent)}</span>
+                        <div>
+                            <div className="text-xs text-on-surface-variant">Expenses</div>
+                            <div className="text-base font-semibold text-error">{formatCurrency(totalSpent)}</div>
                         </div>
-                        <div className="border-t border-outline/20 pt-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-on-surface font-medium">Net Balance</span>
-                                <span className={`font-bold ${remainingBalance >= 0 ? 'text-tertiary' : 'text-error'}`}>
-                                    {formatCurrency(remainingBalance)}
-                                </span>
+                        <div>
+                            <div className="text-xs text-on-surface-variant">Balance</div>
+                            <div className={`text-base font-semibold ${remainingBalance >= 0 ? 'text-primary' : 'text-error'}`}>
+                                {formatCurrency(remainingBalance)}
                             </div>
                         </div>
-                        <div className="mt-3">
-                            <div className="flex justify-between text-sm text-on-surface-variant mb-1">
-                                <span>Spending Rate</span>
-                                <span>{((totalSpent / totalIncome) * 100).toFixed(1)}%</span>
-                            </div>
-                            <div className="w-full bg-surface-variant/50 rounded-full h-2">
-                                <div 
-                                    className={`h-2 rounded-full ${(totalSpent / totalIncome) > 0.8 ? 'bg-error' : (totalSpent / totalIncome) > 0.6 ? 'bg-warning' : 'bg-tertiary'}`}
-                                    style={{ width: `${Math.min(100, (totalSpent / totalIncome) * 100)}%` }}
-                                ></div>
-                            </div>
+                    </div>
+                    <div className="mt-2 text-center">
+                        <div className="text-xs text-on-surface-variant mb-1">
+                            Spending Rate: {((totalSpent / totalIncome) * 100).toFixed(1)}%
+                        </div>
+                        <div className="w-full bg-surface-variant/50 rounded-full h-1.5">
+                            <div 
+                                className={`h-1.5 rounded-full ${(totalSpent / totalIncome) > 0.8 ? 'bg-error' : (totalSpent / totalIncome) > 0.6 ? 'bg-warning' : 'bg-tertiary'}`}
+                                style={{ width: `${Math.min(100, (totalSpent / totalIncome) * 100)}%` }}
+                            ></div>
                         </div>
                     </div>
                 </Card>

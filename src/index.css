@@ -38,3 +38,18 @@
   display: none;  /* Chrome, Safari, Opera */
 }
 
+/* Prevent black background on recharts bars */
+.recharts-bar-rectangle {
+  transition: none !important;
+}
+
+.recharts-bar-rectangle:hover {
+  filter: none !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+.recharts-active-dot {
+  display: none !important;
+}
+
