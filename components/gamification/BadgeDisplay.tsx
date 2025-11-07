@@ -60,3 +60,5 @@ const BadgeDisplay: React.FC<BadgeDisplayProps> = ({ badges, showTitle = true })
 
 export default BadgeDisplay;
 
+
+

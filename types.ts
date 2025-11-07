@@ -64,8 +64,22 @@ export interface Recipe {
 export interface GroceryLink {
   title: string;
   uri: string;
+  // Optional numeric price in INR for comparison; null if unavailable
+  price?: number | null;
 }
 
 export interface OnlineGroceryResult {
   links: GroceryLink[];
+}
+
+// New healthy product launches (static suggestions)
+export interface HealthyProductLaunch {
+  id: string;
+  name: string;
+  category: string; // e.g., snack, oil, staple
+  healthBenefit: string; // e.g., low cholesterol
+  priceINR: number; // approximate price
+  launchDate: string; // ISO date string
+  imageUrl: string;
+  sourceUrl: string;
 }

@@ -189,3 +189,5 @@ If you see permission errors:
 2. Check that the user is authenticated
 3. Verify the user_id matches the authenticated user
 
+
+

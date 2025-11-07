@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View } from '../../App';
-import { HomeIcon, PlusCircleIcon, ShoppingCartIcon, ChatBubbleLeftRightIcon, ChartBarIcon, TrophyIcon, UsersIcon } from '../icons/Icons';
+import { HomeIcon, PlusCircleIcon, ShoppingCartIcon, ChatBubbleLeftRightIcon, ChartBarIcon, TrophyIcon, UsersIcon, SparklesIcon } from '../icons/Icons';
 import { useAppDispatch } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -48,6 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
     { id: 'reports', label: 'Reports', icon: <ChartBarIcon /> },
     { id: 'gamification', label: 'Achievements', icon: <TrophyIcon /> },
     { id: 'family', label: 'Family', icon: <UsersIcon /> },
+    { id: 'healthy-launches', label: 'Healthy Products', icon: <SparklesIcon /> },
   ];
 
   const handleLogoutClick = () => {

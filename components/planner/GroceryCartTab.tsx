@@ -377,17 +377,50 @@ const GroceryCartTab: React.FC<GroceryCartTabProps> = ({ groceryList, onGroceryL
                 {searchState[item.item].links && searchState[item.item].links!.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium text-on-surface-variant mb-2">Shopping Links:</h4>
+                    {/* Price comparison summary if any prices are available */}
+                    {(() => {
+                      const links = searchState[item.item].links!;
+                      const priced = links.filter(l => l.price !== undefined && l.price !== null);
+                      if (priced.length === 0) return null;
+                      const best = priced.reduce((min, l) => (min.price! <= l.price! ? min : l));
+                      const formatINR = (p: number) => `₹${p.toLocaleString('en-IN')}`;
+                      const sorted = [...priced].sort((a, b) => (a.price! - b.price!));
+                      return (
+                        <div className="mb-3 p-2 bg-primary-container/20 rounded">
+                          <p className="text-xs sm:text-sm text-on-surface-variant">
+                            Best price: <span className="font-medium text-on-surface">{best.title}</span> at <span className="font-semibold">{formatINR(best.price!)}</span>
+                          </p>
+                          <div className="mt-2 text-[11px] sm:text-xs text-on-surface-variant">
+                            <span className="font-medium">Compare:</span>
+                            {sorted.map((l, i) => (
+                              <span key={i} className="ml-2 inline-block">{l.title}: <span className="text-on-surface">{formatINR(l.price!)}</span></span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <ul className="space-y-1">
                       {searchState[item.item].links!.map((link, index) => (
-                        <li key={index}>
+                        <li key={index} className="flex items-center justify-between gap-3">
                           <a 
                             href={link.uri} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="text-primary hover:underline text-sm"
+                            className="text-primary hover:underline text-sm flex-1 truncate"
                           >
                             {link.title || 'View Link'}
                           </a>
+                          <span className="text-xs sm:text-sm text-on-surface-variant">
+                            {link.price !== undefined && link.price !== null 
+                              ? `₹${Number(link.price).toLocaleString('en-IN')}`
+                              : 'Price unavailable'}
+                          </span>
+                          <Button 
+                            onClick={() => window.open(link.uri, '_blank')} 
+                            className="!px-3 !py-1 text-xs"
+                          >
+                            Buy
+                          </Button>
                         </li>
                       ))}
                     </ul>

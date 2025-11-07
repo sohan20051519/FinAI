@@ -195,3 +195,5 @@ If SQL doesn't work, you can create tables manually:
 2. Create each table with the columns shown in the SQL above
 3. This is more time-consuming but works if SQL has issues
 
+
+

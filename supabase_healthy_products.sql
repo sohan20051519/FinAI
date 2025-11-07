@@ -93,3 +93,5 @@ $$;
 GRANT EXECUTE ON FUNCTION get_healthy_alternatives(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_healthy_alternatives(TEXT) TO anon;
 
+
+

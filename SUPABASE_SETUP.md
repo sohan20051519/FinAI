@@ -49,3 +49,5 @@ If you see errors about missing Supabase credentials:
 - Supabase Dashboard: https://supabase.com/dashboard/project/uhvecwmzwcyoskuxlwqu
 - Supabase Docs: https://supabase.com/docs
 
+
+

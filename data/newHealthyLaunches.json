@@ -1,0 +1,52 @@
+[
+  {
+    "id": "launch-001",
+    "name": "Organic Basmati Rice (New Harvest)",
+    "category": "staple",
+    "healthBenefit": "Lower pesticide residue, whole-grain option",
+    "priceINR": 699,
+    "launchDate": "2025-10-15",
+    "imageUrl": "https://images.example.com/organic-basmati.jpg",
+    "sourceUrl": "https://www.bigbasket.com/c/organic-basmati-new-harvest"
+  },
+  {
+    "id": "launch-002",
+    "name": "Cold-Pressed Groundnut Oil (Low PUFA)",
+    "category": "oil",
+    "healthBenefit": "Supports heart health, less processed",
+    "priceINR": 399,
+    "launchDate": "2025-10-28",
+    "imageUrl": "https://images.example.com/cold-pressed-groundnut.jpg",
+    "sourceUrl": "https://www.zepto.com/p/cold-pressed-groundnut-oil"
+  },
+  {
+    "id": "launch-003",
+    "name": "High-Protein Millet Snack (Baked)",
+    "category": "snack",
+    "healthBenefit": "High protein, baked not fried",
+    "priceINR": 149,
+    "launchDate": "2025-11-01",
+    "imageUrl": "https://images.example.com/millet-protein-snack.jpg",
+    "sourceUrl": "https://www.amazon.in/dp/millet-protein-snack"
+  },
+  {
+    "id": "launch-004",
+    "name": "Low-GI Brown Rice (Quick Cook)",
+    "category": "staple",
+    "healthBenefit": "Lower glycemic index, better for sugar control",
+    "priceINR": 299,
+    "launchDate": "2025-10-10",
+    "imageUrl": "https://images.example.com/low-gi-brown-rice.jpg",
+    "sourceUrl": "https://www.blinkit.com/prn/low-gi-brown-rice"
+  },
+  {
+    "id": "launch-005",
+    "name": "Organic Jaggery Powder (Unrefined)",
+    "category": "sweetener",
+    "healthBenefit": "Mineral-rich alternative to refined sugar",
+    "priceINR": 179,
+    "launchDate": "2025-10-20",
+    "imageUrl": "https://images.example.com/organic-jaggery-powder.jpg",
+    "sourceUrl": "https://www.swiggy.com/instamart/organic-jaggery-powder"
+  }
+]

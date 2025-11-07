@@ -52,3 +52,5 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ streak }) => {
 
 export default StreakDisplay;
 
+
+

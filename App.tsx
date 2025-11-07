@@ -12,11 +12,12 @@ import SignIn from './components/auth/SignIn';
 import SignUp from './components/auth/SignUp';
 import GamificationDashboard from './components/gamification/GamificationDashboard';
 import FamilyChat from './components/family/FamilyChat';
+import HealthyProductLaunches from './components/healthy-products/HealthyProductLaunches';
 import { AppProvider, useAppState, useAppDispatch } from './context/AppContext';
 import { supabase } from './lib/supabase';
 import { userProfileService, fixedExpensesService, expensesService, incomesService } from './services/supabaseService';
 
-export type View = 'dashboard' | 'expenses' | 'planner' | 'assistant' | 'reports' | 'gamification' | 'family';
+export type View = 'dashboard' | 'expenses' | 'planner' | 'assistant' | 'reports' | 'gamification' | 'family' | 'healthy-launches';
 
 const AppContent: React.FC = () => {
   const { isOnboardingComplete, isAuthenticated } = useAppState();
@@ -437,6 +438,8 @@ const AppContent: React.FC = () => {
         return <GamificationDashboard />;
       case 'family':
         return <FamilyChat />;
+      case 'healthy-launches':
+        return <HealthyProductLaunches />;
       default:
         return <Dashboard />;
     }

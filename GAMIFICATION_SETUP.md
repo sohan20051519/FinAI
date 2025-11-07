@@ -159,3 +159,5 @@ If gamification features don't work:
 3. Check that RLS policies are enabled
 4. Ensure user is authenticated
 
+
+

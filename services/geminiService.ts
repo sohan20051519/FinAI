@@ -362,9 +362,10 @@ export const generateRecipeVideo = async (recipeName: string, onProgress: (messa
 export const findGroceryOnline = async (itemName: string): Promise<GroceryLink[]> => {
     const prompt = `Using Google Search, find online shopping links for the grocery item: "${itemName}".
     Focus on popular Indian online grocery stores like BigBasket, Blinkit, Zepto, Swiggy Instamart, and Amazon Fresh.
-    Return a JSON array of objects, where each object has a "title" (the store name) and a "uri" (the direct search or product URL).
-    Example format: [{"title": "BigBasket", "uri": "https://..."}, {"title": "Amazon Fresh", "uri": "https://..."}]
-    Provide up to 3 relevant links. If you cannot find links, return an empty array.
+    Return a JSON array of objects with fields: "title" (store name), "uri" (product or search URL), and "price" (numeric price in INR if available, otherwise null).
+    Strictly parse the price from the page snippet or product data; when price text contains currency symbols or separators (e.g., ₹199, 1,299), return the numeric value (e.g., 199 or 1299).
+    Example format: [{"title": "BigBasket", "uri": "https://...", "price": 199}, {"title": "Amazon Fresh", "uri": "https://...", "price": null}]
+    Provide up to 5 relevant links. If you cannot find links, return an empty array.
     Your response MUST be only the JSON array. Do not add any other text or markdown formatting.`;
 
     try {
@@ -383,7 +384,25 @@ export const findGroceryOnline = async (itemName: string): Promise<GroceryLink[]
         }
         
         if (text.startsWith('[') && text.endsWith(']')) {
-            return JSON.parse(text);
+            // Coerce price fields into number|null for safety
+            const raw = JSON.parse(text);
+            if (Array.isArray(raw)) {
+                return raw.map((entry: any) => {
+                    let price: number | null = null;
+                    if (entry && entry.price !== undefined && entry.price !== null) {
+                        const num = typeof entry.price === 'string' 
+                            ? Number(String(entry.price).replace(/[^0-9.]/g, '')) 
+                            : Number(entry.price);
+                        price = Number.isFinite(num) ? num : null;
+                    }
+                    return {
+                        title: entry.title,
+                        uri: entry.uri,
+                        price,
+                    } as GroceryLink;
+                });
+            }
+            return [];
         } else {
             console.warn('AI response was not a valid JSON array:', text);
             return [];

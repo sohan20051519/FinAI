@@ -52,53 +52,45 @@ const AlertCard: React.FC<{ type: 'warning' | 'info' | 'success'; title: string;
     );
 };
 
-const SavingsSuggestionCard: React.FC<{ suggestions: string[] }> = ({ suggestions }) => {
+const SavingsSuggestionCard: React.FC<{ suggestions: Array<{
+    category: string;
+    suggestion: string;
+    potentialSaving: number;
+    difficulty: string;
+    icon: string;
+    priority: string;
+}> }> = ({ suggestions }) => {
     if (suggestions.length === 0) return null;
     
     return (
         <Card className="mb-4 bg-tertiary-container/30 border-2 border-tertiary">
-            <h3 className="text-lg font-semibold text-on-surface mb-3">💡 Savings Suggestions</h3>
-            <ul className="space-y-2">
-                {suggestions.map((suggestion, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-on-surface-variant">
-                        <span className="text-tertiary mt-1">•</span>
-                        <span>{suggestion}</span>
-                    </li>
-                ))}
-            </ul>
-        </Card>
-    );
-};
-
-const SavingsVisualization: React.FC<{ savedAmount: number }> = ({ savedAmount }) => {
-    const getSavingsEquivalents = (amount: number) => {
-        const equivalents = [
-            { item: 'Movie Tickets', value: 250, emoji: '🎬' },
-            { item: 'Cups of Coffee', value: 50, emoji: '☕' },
-            { item: 'Meals at Restaurant', value: 300, emoji: '🍽️' },
-            { item: 'Books', value: 400, emoji: '📚' },
-            { item: 'Uber Rides', value: 200, emoji: '🚗' },
-        ];
-        
-        return equivalents.map(eq => ({
-            ...eq,
-            count: Math.floor(amount / eq.value),
-        })).filter(eq => eq.count > 0).slice(0, 3);
-    };
-    
-    const equivalents = getSavingsEquivalents(savedAmount);
-    
-    if (equivalents.length === 0 || savedAmount <= 0) return null;
-    
-    return (
-        <Card className="mb-4 bg-secondary-container/30 border-2 border-secondary">
-            <h3 className="text-lg font-semibold text-on-surface mb-3">🎉 Your Savings Could Buy</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {equivalents.map((eq, index) => (
-                    <div key={index} className="text-center p-3 bg-surface rounded-lg">
-                        <div className="text-2xl mb-1">{eq.emoji}</div>
-                        <div className="text-sm font-medium text-on-surface">{eq.count}x</div>
-                        <div className="text-xs text-on-surface-variant">{eq.item}</div>
+            <h3 className="text-lg font-semibold text-on-surface mb-3">💡 Investment-Focused Savings</h3>
+            <div className="space-y-3">
+                {suggestions.map((item, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-surface/50 rounded-lg border border-outline/20">
+                        <span className="text-xl">{item.icon}</span>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-semibold text-on-surface">{item.category}</span>
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                    item.priority === 'High' ? 'bg-error-container text-error' :
+                                    item.priority === 'Medium' ? 'bg-warning-container text-warning' :
+                                    'bg-info-container text-info'
+                                }`}>
+                                    {item.priority}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                    item.difficulty === 'Easy' ? 'bg-success-container text-success' :
+                                    'bg-surface-variant text-on-surface-variant'
+                                }`}>
+                                    {item.difficulty}
+                                </span>
+                            </div>
+                            <p className="text-sm text-on-surface-variant mb-2">{item.suggestion}</p>
+                            <p className="text-xs text-tertiary font-medium">
+                                Potential Annual Benefit: ₹{item.potentialSaving.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -106,7 +98,98 @@ const SavingsVisualization: React.FC<{ savedAmount: number }> = ({ savedAmount }
     );
 };
 
-const Dashboard: React.FC = () => {
+const SavingsVisualization: React.FC<{ savedAmount: number }> = ({ savedAmount }) => {
+    const getSavingsEquivalents = (amount: number) => {
+        const equivalents = [
+            // Investment opportunities
+            { item: 'Months of SIP Investment', value: 500, emoji: '📈', category: 'investment' },
+            { item: 'Gold Grams', value: 6000, emoji: '🥇', category: 'investment' },
+            { item: 'Mutual Fund Units', value: 1000, emoji: '📊', category: 'investment' },
+            { item: 'Fixed Deposit Months', value: 10000, emoji: '🏦', category: 'investment' },
+            
+            // Smart savings
+            { item: 'Weeks of Groceries', value: 2000, emoji: '🛒', category: 'savings' },
+            { item: 'Months of Electricity', value: 1500, emoji: '💡', category: 'utilities' },
+            { item: 'Weeks of Fuel', value: 3000, emoji: '⛽', category: 'transport' },
+            { item: 'Months of Internet', value: 800, emoji: '📶', category: 'utilities' },
+            
+            // Lifestyle upgrades
+            { item: 'Online Courses', value: 999, emoji: '🎓', category: 'education' },
+            { item: 'Gym Membership Months', value: 1200, emoji: '💪', category: 'health' },
+            { item: 'Medical Checkups', value: 2500, emoji: '🏥', category: 'health' },
+            { item: 'Weekend Trips', value: 5000, emoji: '🏖️', category: 'travel' },
+        ];
+        
+        return equivalents.map(eq => ({
+            ...eq,
+            count: Math.floor(amount / eq.value),
+        })).filter(eq => eq.count > 0).slice(0, 4);
+    };
+    
+    const equivalents = getSavingsEquivalents(savedAmount);
+    
+    if (equivalents.length === 0 || savedAmount <= 0) return null;
+    
+    const investmentOptions = equivalents.filter(eq => eq.category === 'investment');
+    const otherOptions = equivalents.filter(eq => eq.category !== 'investment');
+    
+    return (
+        <Card className="mb-6 bg-gradient-to-r from-secondary-container to-tertiary-container border-2 border-secondary/50">
+            <h3 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+                <span className="text-2xl">🎉</span>
+                Your Savings Could Fund
+            </h3>
+            
+            {investmentOptions.length > 0 && (
+                <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-on-surface-variant mb-2 flex items-center gap-1">
+                        <span className="text-lg">💰</span>
+                        Investment Opportunities
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {investmentOptions.map((eq, index) => (
+                            <div key={index} className="text-center p-4 bg-surface/80 rounded-lg border border-secondary/20 hover:shadow-md transition-shadow">
+                                <div className="text-3xl mb-2">{eq.emoji}</div>
+                                <div className="text-lg font-bold text-on-surface">{eq.count}</div>
+                                <div className="text-sm text-on-surface-variant font-medium">{eq.item}</div>
+                                <div className="text-xs text-primary mt-1">
+                                    Value: ₹{(eq.count * eq.value).toLocaleString('en-IN')}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            {otherOptions.length > 0 && (
+                <div>
+                    <h4 className="text-sm font-semibold text-on-surface-variant mb-2 flex items-center gap-1">
+                        <span className="text-lg">🎯</span>
+                        Smart Spending Alternatives
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {otherOptions.map((eq, index) => (
+                            <div key={index} className="text-center p-3 bg-surface/60 rounded-lg border border-outline/20 hover:shadow-sm transition-shadow">
+                                <div className="text-2xl mb-1">{eq.emoji}</div>
+                                <div className="text-base font-semibold text-on-surface">{eq.count}x</div>
+                                <div className="text-xs text-on-surface-variant">{eq.item}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            <div className="mt-4 p-3 bg-primary-container/30 rounded-lg border border-primary/20">
+                <p className="text-sm text-on-surface-variant text-center">
+                    💡 <strong>Pro Tip:</strong> Consider investing {Math.min(20, Math.floor(savedAmount / 500))}% of your savings 
+                    in SIPs or mutual funds for long-term growth!
+                </p>
+            </div>
+        </Card>
+    );
+};
+
+export default function Dashboard() {
     const { expenses, incomes, userProfile } = useAppState();
 
     const now = new Date();
@@ -146,68 +229,136 @@ const Dashboard: React.FC = () => {
         ? Math.floor(remainingBalance / averageDailySpending) 
         : 0;
 
-    // Generate predictive alerts
+    // Generate predictive alerts with investment insights
     const getPredictiveAlerts = () => {
         const alerts = [];
+        const savingsRate = remainingBalance > 0 ? (remainingBalance / totalIncome) * 100 : 0;
+        const weeklySpending = averageDailySpending * 7;
+        const monthlyInvestmentPotential = remainingBalance > 0 ? Math.floor(remainingBalance * 0.2) : 0;
         
+        // Critical financial alerts
         if (projectedOverspending > 0 && daysUntilOverspending > 0) {
             alerts.push({
                 type: 'warning' as const,
-                title: '⚠️ Budget Alert',
-                message: `At this pace, you'll overshoot your budget by ₹${projectedOverspending.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} in approximately ${daysUntilOverspending} day${daysUntilOverspending !== 1 ? 's' : ''}. Consider reducing spending.`,
+                title: '🚨 Critical Budget Alert',
+                message: `At your current spending rate, you'll overshoot your budget by ₹${projectedOverspending.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} in ${daysUntilOverspending} day${daysUntilOverspending !== 1 ? 's' : ''}. Consider reducing discretionary spending by 15-20%.`,
             });
-        } else if (remainingBalance < totalIncome * 0.1 && remainingBalance > 0) {
+        }
+        
+        if (remainingBalance < totalIncome * 0.1 && remainingBalance > 0) {
             alerts.push({
                 type: 'warning' as const,
-                title: '⚠️ Low Budget Remaining',
-                message: `You have only ₹${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining this month. Be mindful of your spending.`,
+                title: '⚠️ Emergency Fund Alert',
+                message: `You have only ₹${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining. Consider pausing non-essential expenses and building an emergency fund of 3-6 months' expenses.`,
             });
-        } else if (remainingBalance < 0) {
+        }
+        
+        if (remainingBalance < 0) {
             alerts.push({
-                type: 'warning' as const,
-                title: '⚠️ Budget Exceeded',
-                message: `You've exceeded your monthly budget by ₹${Math.abs(remainingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+                type: 'error' as const,
+                title: '💳 Debt Warning',
+                message: `You've exceeded your monthly budget by ₹${Math.abs(remainingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Consider using this as a learning opportunity to create a stricter budget next month.`,
             });
-        } else if (remainingBalance > totalIncome * 0.3) {
+        }
+        
+        // Investment opportunity alerts
+        if (savingsRate >= 20 && remainingBalance > 5000) {
             alerts.push({
                 type: 'success' as const,
-                title: '✅ Great Job!',
-                message: `You're doing well! You have ₹${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining with ${daysRemaining} days left in the month.`,
+                title: '🚀 Investment Opportunity',
+                message: `Excellent savings rate of ${savingsRate.toFixed(1)}%! Consider starting a ₹${monthlyInvestmentPotential.toLocaleString('en-IN')} monthly SIP in index funds or exploring mutual funds for long-term wealth creation.`,
+            });
+        }
+        
+        if (savingsRate >= 10 && savingsRate < 20 && remainingBalance > 2000) {
+            alerts.push({
+                type: 'info' as const,
+                title: '💰 Smart Savings Alert',
+                message: `Good savings rate of ${savingsRate.toFixed(1)}%! You could invest ₹${monthlyInvestmentPotential.toLocaleString('en-IN')} monthly in recurring deposits or start building your emergency fund.`,
+            });
+        }
+        
+        // Spending pattern alerts
+        if (weeklySpending > totalIncome * 0.3 && remainingBalance > 0) {
+            alerts.push({
+                type: 'info' as const,
+                title: '📊 Spending Pattern Alert',
+                message: `Your weekly spending is ₹${weeklySpending.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Consider the 50/30/20 rule: 50% needs, 30% wants, 20% savings & investments.`,
+            });
+        }
+        
+        // Positive reinforcement
+        if (savingsRate >= 30) {
+            alerts.push({
+                type: 'success' as const,
+                title: '🏆 Outstanding Financial Health!',
+                message: `Incredible savings rate of ${savingsRate.toFixed(1)}%! You're in the top tier of savers. Consider diversifying into stocks, bonds, or real estate investment trusts (REITs).`,
+            });
+        } else if (savingsRate >= 20 && savingsRate < 30) {
+            alerts.push({
+                type: 'success' as const,
+                title: '✅ Excellent Progress!',
+                message: `You're doing well with ${savingsRate.toFixed(1)}% savings rate! With ₹${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining, consider increasing your investment allocation by 5-10%.`,
             });
         }
         
         return alerts;
     };
 
-    // Generate savings suggestions
+    // Generate concise savings suggestions with investment focus
     const getSavingsSuggestions = () => {
         const suggestions = [];
-        const foodExpenses = expenses
-            .filter(exp => exp.category?.toLowerCase().includes('food') || exp.description?.toLowerCase().includes('food') || exp.description?.toLowerCase().includes('restaurant') || exp.description?.toLowerCase().includes('outside'))
-            .reduce((sum, exp) => {
-                const expDate = new Date(exp.date);
-                const isRecurring = exp.recurring === 'monthly';
-                const isOneTimeThisMonth = !isRecurring && expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth;
-                return (isRecurring || isOneTimeThisMonth) ? sum + exp.amount : sum;
-            }, 0);
+        const monthlyInvestmentPotential = remainingBalance > 0 ? Math.floor(remainingBalance * 0.2) : 0;
         
-        if (foodExpenses > totalIncome * 0.2) {
-            suggestions.push('Reduce outside food expenses - cooking at home can save 30-40% on food costs');
+        // Investment-focused suggestions
+        if (monthlyInvestmentPotential >= 500) {
+            suggestions.push({
+                category: 'SIP Investment',
+                suggestion: `Start ₹${monthlyInvestmentPotential.toLocaleString('en-IN')} monthly SIP`,
+                potentialSaving: monthlyInvestmentPotential * 12 * 0.12,
+                difficulty: 'Easy',
+                icon: '📈',
+                priority: 'High',
+            });
         }
         
-        if (totalSpent > totalIncome * 0.8) {
-            suggestions.push('Switch to generic brands for everyday items - can save 15-20% without compromising quality');
-            suggestions.push('Buy in bulk for frequently used items - reduces per-unit cost significantly');
+        suggestions.push({
+            category: 'PPF Investment',
+            suggestion: '₹2,000 monthly in PPF',
+            potentialSaving: 24000,
+            difficulty: 'Easy',
+            icon: '🏦',
+            priority: 'High',
+        });
+        
+        suggestions.push({
+            category: 'Gold ETF',
+            suggestion: '10% savings to gold ETFs',
+            potentialSaving: remainingBalance * 0.1 * 12 * 0.08,
+            difficulty: 'Medium',
+            icon: '🥇',
+            priority: 'Medium',
+        });
+        
+        if (averageDailySpending > 0) {
+            suggestions.push({
+                category: 'Meal Savings',
+                suggestion: 'Skip 1 restaurant meal/week',
+                potentialSaving: averageDailySpending * 7 * 4 * 0.10,
+                difficulty: 'Easy',
+                icon: '🍽️',
+                priority: 'Medium',
+            });
         }
         
-        if (projectedOverspending > 0) {
-            suggestions.push('Review recurring subscriptions and cancel unused services');
-            suggestions.push('Plan grocery shopping with a list to avoid impulse purchases');
-        }
-        
-        if (suggestions.length === 0 && remainingBalance > 0) {
-            suggestions.push('Consider setting aside 10-20% of remaining balance for emergency fund');
-        }
+        suggestions.push({
+            category: 'Tax Saving',
+            suggestion: 'Max 80C with ELSS funds',
+            potentialSaving: 46800,
+            difficulty: 'Medium',
+            icon: '💰',
+            priority: 'High',
+        });
         
         return suggestions;
     };
@@ -236,6 +387,43 @@ const Dashboard: React.FC = () => {
                 <SummaryCard title="Remaining This Month" value={formatCurrency(remainingBalance)} color={remainingBalance >= 0 ? "text-on-surface" : "text-error"} />
             </div>
 
+            {/* Income vs Expense Comparison */}
+            {totalIncome > 0 && (
+                <Card className="mb-6">
+                    <h3 className="text-lg font-semibold text-on-surface mb-4">Income vs Expense</h3>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-on-surface-variant">Income</span>
+                            <span className="text-tertiary font-medium">{formatCurrency(totalIncome)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-on-surface-variant">Expenses</span>
+                            <span className="text-error font-medium">{formatCurrency(totalSpent)}</span>
+                        </div>
+                        <div className="border-t border-outline/20 pt-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-on-surface font-medium">Net Balance</span>
+                                <span className={`font-bold ${remainingBalance >= 0 ? 'text-tertiary' : 'text-error'}`}>
+                                    {formatCurrency(remainingBalance)}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="mt-3">
+                            <div className="flex justify-between text-sm text-on-surface-variant mb-1">
+                                <span>Spending Rate</span>
+                                <span>{((totalSpent / totalIncome) * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full bg-surface-variant/50 rounded-full h-2">
+                                <div 
+                                    className={`h-2 rounded-full ${(totalSpent / totalIncome) > 0.8 ? 'bg-error' : (totalSpent / totalIncome) > 0.6 ? 'bg-warning' : 'bg-tertiary'}`}
+                                    style={{ width: `${Math.min(100, (totalSpent / totalIncome) * 100)}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             {/* Predictive Alerts */}
             {alerts.map((alert, index) => (
                 <AlertCard key={index} type={alert.type} title={alert.title} message={alert.message} />
@@ -259,8 +447,8 @@ const Dashboard: React.FC = () => {
                     <p className="text-center text-on-surface-variant py-8">You haven't logged any transactions yet.</p>
                 )}
             </Card>
+
+
         </div>
     );
-};
-
-export default Dashboard;
+}
